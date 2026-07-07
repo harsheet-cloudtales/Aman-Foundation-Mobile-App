@@ -1,7 +1,20 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, Animated, Dimensions } from "react-native";
-import { useState, useRef } from "react";
+import { useAuth } from "@/lib/useAuth";
+import { getUserRole, UserRole } from "@/utils/permissions";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import {
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -18,7 +31,9 @@ const Footer = () => {
             </View>
             <Text style={styles.footerFoundationName}>Aman Foundation</Text>
           </View>
-          <Text style={styles.footerTagline}>Creating lasting impact in communities</Text>
+          <Text style={styles.footerTagline}>
+            Creating lasting impact in communities
+          </Text>
         </View>
 
         {/* Contact Information */}
@@ -30,7 +45,9 @@ const Footer = () => {
           </View>
           <View style={styles.footerContactItem}>
             <Ionicons name="mail-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>info@amanfoundation.org</Text>
+            <Text style={styles.footerContactText}>
+              info@amanfoundation.org
+            </Text>
           </View>
           <View style={styles.footerContactItem}>
             <Ionicons name="location-outline" size={16} color="#6B7280" />
@@ -44,10 +61,10 @@ const Footer = () => {
           <View style={styles.footerContactItem}>
             <Ionicons name="home-outline" size={16} color="#6B7280" />
             <Text style={styles.footerAddressText}>
-                         Mumbai  {'\n'}
-                         Sector F-11/3, Maha,{'\n'}
-                         India 
-                       </Text>
+              Mumbai {"\n"}
+              Sector F-11/3, Maha,{"\n"}
+              India
+            </Text>
           </View>
         </View>
       </View>
@@ -71,6 +88,10 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [showFooter, setShowFooter] = useState(false);
   const router = useRouter();
+  const { user, logout: authLogout } = useAuth();
+  const currentRole = getUserRole(user);
+  const isFellowUser = currentRole === UserRole.FELLOW;
+  const hasFullAccess = !isFellowUser;
 
   // Sidebar
   const [menuOpen, setMenuOpen] = useState(false);
@@ -79,10 +100,12 @@ export default function Dashboard() {
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
 
   // Animated values for dropdowns
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
 
   const toggleMenu = () => {
     if (menuOpen) {
@@ -121,6 +144,16 @@ export default function Dashboard() {
     setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
   };
 
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 2000);
@@ -128,8 +161,22 @@ export default function Dashboard() {
 
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    // Show footer when scrolled down more than 300 pixels
     setShowFooter(offsetY > 300);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await authLogout();
+          router.replace("/login");
+        },
+      },
+    ]);
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -138,6 +185,11 @@ export default function Dashboard() {
   });
 
   const rotateLivelihood = livelihoodRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const rotateAuth = authRotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "180deg"],
   });
@@ -243,7 +295,11 @@ export default function Dashboard() {
                   router.push("/education_pta_programs");
                 }}
               >
-                <Ionicons name="document-text-outline" size={18} color="#6b7280" />
+                <Ionicons
+                  name="document-text-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Progress Reports</Text>
               </TouchableOpacity>
             </View>
@@ -260,7 +316,9 @@ export default function Dashboard() {
               <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Livelihood</Text>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateLivelihood }] }}>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Animated.View>
           </TouchableOpacity>
@@ -300,17 +358,6 @@ export default function Dashboard() {
                 <Text style={styles.dropdownText}>Agriculture Support</Text>
               </TouchableOpacity>
 
-              {/* <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/livelihood_skill_training");
-                }}
-              >
-                <Ionicons name="construct-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Skill Training</Text>
-              </TouchableOpacity> */}
-
               <TouchableOpacity
                 style={styles.dropdownItem}
                 onPress={() => {
@@ -318,45 +365,133 @@ export default function Dashboard() {
                   router.push("/beneficiary_master_profile");
                 }}
               >
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Beneficiaries</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/disaster_relief_management");
-          }}
-        >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
+        {hasFullAccess && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              toggleMenu();
+              router.push("/disaster_relief_management");
+            }}
+          >
+            <Ionicons name="snow-outline" size={20} color="#4b5563" />
+            <Text style={styles.menuText}>Disaster Relief</Text>
+          </TouchableOpacity>
+        )}
+
+        {hasFullAccess && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              toggleMenu();
+              router.push("/hr_employee_management");
+            }}
+          >
+            <Ionicons name="people-outline" size={20} color="#4b5563" />
+            <Text style={styles.menuText}>HR Management</Text>
+          </TouchableOpacity>
+        )}
+
+        {hasFullAccess && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              toggleMenu();
+              router.push("/admin_access_control");
+            }}
+          >
+            <Ionicons name="document-text-outline" size={20} color="#4b5563" />
+            <Text style={styles.menuText}>Admin & Access</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => {
             toggleMenu();
-            router.push("/hr_employee_management");
+            router.push("/(tabs)/leaves");
           }}
         >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
+          <Ionicons name="calendar-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>Leaves</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
 
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => {
             toggleMenu();
-            router.push("/admin_access_control");
+            router.push("/profile");
           }}
         >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
         </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/registration");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN SCREEN */}
@@ -386,26 +521,50 @@ export default function Dashboard() {
           <Text style={styles.headerTitle}>Impact Portal</Text>
 
           <View style={styles.headerIcons}>
-            <TouchableOpacity onPress={() => {}}>
-              <Ionicons name="notifications-outline" size={22} color="#1f2937" />
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#1f2937"
+              />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => {}}>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
+            >
               <Ionicons name="settings-outline" size={22} color="#1f2937" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => {}}>
-              <View style={styles.avatar} />
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatar}
+              />
             </TouchableOpacity>
           </View>
         </View>
 
+        <View style={styles.roleBanner}>
+          <Text style={styles.roleBannerTitle}>
+            {isFellowUser ? "Fellow workspace" : "Program manager workspace"}
+          </Text>
+          <Text style={styles.roleBannerText}>
+            {isFellowUser
+              ? "Education, Livelihood, and Leaves are enabled for your account."
+              : "You have full access to the portal modules."}
+          </Text>
+        </View>
+
         {/* Title */}
         <View style={styles.section}>
-          <Text style={styles.mainTitle}>
-            YTD Impact{"\n"}Snapshot
-          </Text>
-          <Text style={styles.subText}>
-            Data updated: Today, 09:41 AM
-          </Text>
+          <Text style={styles.mainTitle}>YTD Impact{"\n"}Snapshot</Text>
+          <Text style={styles.subText}>Data updated: Today, 09:41 AM</Text>
         </View>
 
         {/* Buttons */}
@@ -468,7 +627,9 @@ export default function Dashboard() {
             {/* Y Axis */}
             <View style={styles.yAxis}>
               {["5k", "4k", "3k", "2k", "1k", "0"].map((label, i) => (
-                <Text key={i} style={styles.yLabel}>{label}</Text>
+                <Text key={i} style={styles.yLabel}>
+                  {label}
+                </Text>
               ))}
             </View>
 
@@ -483,7 +644,9 @@ export default function Dashboard() {
               {/* X Axis */}
               <View style={styles.xAxis}>
                 {["Jan", "Feb", "Mar", "Apr", "May"].map((m, i) => (
-                  <Text key={i} style={styles.xLabel}>{m}</Text>
+                  <Text key={i} style={styles.xLabel}>
+                    {m}
+                  </Text>
                 ))}
               </View>
             </View>
@@ -502,7 +665,8 @@ export default function Dashboard() {
             <View style={styles.activityContent}>
               <Text style={styles.activityTitle}>Goat Rearing Phase 2</Text>
               <Text style={styles.activityText}>
-                Distribution of 500 livestock to identified families in Ward 4 completed ahead of schedule.
+                Distribution of 500 livestock to identified families in Ward 4
+                completed ahead of schedule.
               </Text>
               <Text style={styles.timeText}>2 days ago</Text>
             </View>
@@ -516,7 +680,8 @@ export default function Dashboard() {
             <View style={styles.activityContent}>
               <Text style={styles.activityTitle}>New Fellows</Text>
               <Text style={styles.activityText}>
-                45 new fellows onboarded and assigned to 12 target schools in the northern district.
+                45 new fellows onboarded and assigned to 12 target schools in
+                the northern district.
               </Text>
               <Text style={styles.timeText}>5 days ago</Text>
             </View>
@@ -543,7 +708,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 15,
-    marginTop:-25
+    marginTop: -25,
   },
 
   headerTitle: {
@@ -938,25 +1103,75 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
 
+  // Authentication dropdown styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  roleBanner: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: "#ecfeff",
+    borderWidth: 1,
+    borderColor: "#a7f3d0",
+  },
+  roleBannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#115e59",
+  },
+  roleBannerText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#0f766e",
+  },
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
+
   // Footer styles
   footer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     marginTop: 40,
     marginBottom: 20,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 4,
     borderTopWidth: 1,
-    borderTopColor: '#EDEEEF',
+    borderTopColor: "#EDEEEF",
   },
   footerContent: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     marginBottom: 24,
     gap: 20,
   },
@@ -965,78 +1180,80 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   footerLogoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   footerLogoIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   footerFoundationName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#065f46',
+    fontWeight: "700",
+    color: "#065f46",
   },
   footerTagline: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     lineHeight: 16,
   },
   footerSectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#191C1D',
+    fontWeight: "600",
+    color: "#191C1D",
     marginBottom: 12,
   },
   footerContactItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 10,
     marginBottom: 10,
   },
   footerContactText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     flex: 1,
   },
   footerAddressText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     flex: 1,
     lineHeight: 18,
   },
   footerBottom: {
     borderTopWidth: 1,
-    borderTopColor: '#EDEEEF',
+    borderTopColor: "#EDEEEF",
     paddingTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 12,
   },
   footerCopyright: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   footerLinks: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   footerLinkText: {
     fontSize: 12,
-    color: '#047857',
-    fontWeight: '500',
+    color: "#047857",
+    fontWeight: "500",
   },
   footerDot: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
 });
+
+//see where are the fellow code and also check for the leave system for fellow

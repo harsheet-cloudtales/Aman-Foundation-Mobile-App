@@ -1,27 +1,27 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import { router } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  View,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Modal,
-  FlatList,
-  Alert,
-  RefreshControl,
-  StatusBar,
-  StyleSheet,
-  Animated,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { router } from 'expo-router';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 // Types
 interface Student {
@@ -43,11 +43,11 @@ interface Student {
 
 // Mock Data
 const DEFAULT_SCHOOLS = [
-  { name: 'Oakridge Academy, Kalgachia' },
-  { name: 'Kalgachia Public School, Kalgachia' },
-  { name: 'Bartari Primary School, Bartari' },
-  { name: 'Digjani High School, Digjani' },
-  { name: 'Sawpur Elementary, Sawpur' },
+  { name: "Oakridge Academy, Kalgachia" },
+  { name: "Kalgachia Public School, Kalgachia" },
+  { name: "Bartari Primary School, Bartari" },
+  { name: "Digjani High School, Digjani" },
+  { name: "Sawpur Elementary, Sawpur" },
 ];
 
 const DEFAULT_STUDENTS: Student[] = [
@@ -119,36 +119,39 @@ const DEFAULT_STUDENTS: Student[] = [
 
 const StudentsModule = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('All Grades');
-  const [performanceFilter, setPerformanceFilter] = useState('All Performance');
-  const [schoolFilter, setSchoolFilter] = useState('All Schools');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("All Grades");
+  const [performanceFilter, setPerformanceFilter] = useState("All Performance");
+  const [schoolFilter, setSchoolFilter] = useState("All Schools");
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState(DEFAULT_STUDENTS);
-  
+
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
-  
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+
   // Filter picker states
   const [showGradePicker, setShowGradePicker] = useState(false);
   const [showPerformancePicker, setShowPerformancePicker] = useState(false);
   const [showSchoolPicker, setShowSchoolPicker] = useState(false);
-  
+
   // Animated values
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
-  
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
+
   // Form states for adding a student
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentId, setNewStudentId] = useState('');
-  const [newStudentSchool, setNewStudentSchool] = useState('');
-  const [newStudentGrade, setNewStudentGrade] = useState('Grade 8');
-  const [newStudentGradeGroup, setNewStudentGradeGroup] = useState('Middle (6-8)');
-  const [newStudentAttendance, setNewStudentAttendance] = useState('');
-  const [newStudentStatus, setNewStudentStatus] = useState('On Track');
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentId, setNewStudentId] = useState("");
+  const [newStudentSchool, setNewStudentSchool] = useState("");
+  const [newStudentGrade, setNewStudentGrade] = useState("Grade 8");
+  const [newStudentGradeGroup, setNewStudentGradeGroup] =
+    useState("Middle (6-8)");
+  const [newStudentAttendance, setNewStudentAttendance] = useState("");
+  const [newStudentStatus, setNewStudentStatus] = useState("On Track");
 
   const toggleMenu = () => {
     if (menuOpen) {
@@ -187,9 +190,34 @@ const StudentsModule = () => {
     setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
   };
 
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
   const handleNavigation = (route: string) => {
     toggleMenu();
     router.push(route);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert("Success", "Logged out successfully");
+          router.replace("/login");
+        },
+      },
+    ]);
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -202,26 +230,38 @@ const StudentsModule = () => {
     outputRange: ["0deg", "180deg"],
   });
 
+  const rotateAuth = authRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
   const handleAddStudent = () => {
     if (!newStudentName || !newStudentSchool || !newStudentAttendance) {
-      Alert.alert('Error', 'Please fill all required fields');
+      Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
-    const initials = newStudentName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || 'ST';
-    const bgColors = ['#d1fae5', '#fed7aa', '#ddd6fe', '#e5e7eb'];
+    const initials =
+      newStudentName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .substring(0, 2) || "ST";
+    const bgColors = ["#d1fae5", "#fed7aa", "#ddd6fe", "#e5e7eb"];
     const bgClass = bgColors[newStudentName.length % bgColors.length];
 
     const att = parseInt(newStudentAttendance);
-    const attendanceColor = att > 85 ? '#059669' : att > 70 ? '#6B7280' : '#ea580c';
-    const barColor = att > 85 ? '#059669' : att > 70 ? '#6B7280' : '#ea580c';
+    const attendanceColor =
+      att > 85 ? "#059669" : att > 70 ? "#6B7280" : "#ea580c";
+    const barColor = att > 85 ? "#059669" : att > 70 ? "#6B7280" : "#ea580c";
     const hasGlow = att > 90;
 
     const statusColors: { [key: string]: string } = {
-      'On Track': '#d1fae5',
-      'Satisfactory': '#f3f4f6',
-      'Needs Attention': '#fee2e2',
-      'Excelling': '#d1fae5',
+      "On Track": "#d1fae5",
+      Satisfactory: "#f3f4f6",
+      "Needs Attention": "#fee2e2",
+      Excelling: "#d1fae5",
     };
 
     const newStudent: Student = {
@@ -232,32 +272,33 @@ const StudentsModule = () => {
       school: newStudentSchool,
       grade: newStudentGrade,
       gradeGroup: newStudentGradeGroup,
-      district: newStudentSchool.split(',')[0].trim().split(' ')[0] || 'Kalgachia',
+      district:
+        newStudentSchool.split(",")[0].trim().split(" ")[0] || "Kalgachia",
       attendance: att,
       attendanceColor,
       barColor,
       hasGlow,
       status: newStudentStatus,
-      statusClass: statusColors[newStudentStatus] || '#f3f4f6',
+      statusClass: statusColors[newStudentStatus] || "#f3f4f6",
     };
 
     setStudents([newStudent, ...students]);
-    setNewStudentName('');
-    setNewStudentId('');
-    setNewStudentSchool('');
-    setNewStudentGrade('Grade 8');
-    setNewStudentGradeGroup('Middle (6-8)');
-    setNewStudentAttendance('');
-    setNewStudentStatus('On Track');
+    setNewStudentName("");
+    setNewStudentId("");
+    setNewStudentSchool("");
+    setNewStudentGrade("Grade 8");
+    setNewStudentGradeGroup("Middle (6-8)");
+    setNewStudentAttendance("");
+    setNewStudentStatus("On Track");
     setShowAddModal(false);
-    Alert.alert('Success', 'Student added successfully');
+    Alert.alert("Success", "Student added successfully");
   };
 
   const clearFilters = () => {
-    setGradeFilter('All Grades');
-    setPerformanceFilter('All Performance');
-    setSchoolFilter('All Schools');
-    setSearchQuery('');
+    setGradeFilter("All Grades");
+    setPerformanceFilter("All Performance");
+    setSchoolFilter("All Schools");
+    setSearchQuery("");
   };
 
   const onRefresh = () => {
@@ -272,24 +313,38 @@ const StudentsModule = () => {
       s.id.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesGrade =
-      gradeFilter === 'All Grades' || s.gradeGroup === gradeFilter;
+      gradeFilter === "All Grades" || s.gradeGroup === gradeFilter;
 
     const matchesPerformance =
-      performanceFilter === 'All Performance' ||
-      (performanceFilter === 'Excellent' && s.status === 'Excelling') ||
-      (performanceFilter === 'Satisfactory' &&
-        (s.status === 'On Track' || s.status === 'Satisfactory')) ||
-      (performanceFilter === 'Needs Attention' && s.status === 'Needs Attention');
+      performanceFilter === "All Performance" ||
+      (performanceFilter === "Excellent" && s.status === "Excelling") ||
+      (performanceFilter === "Satisfactory" &&
+        (s.status === "On Track" || s.status === "Satisfactory")) ||
+      (performanceFilter === "Needs Attention" &&
+        s.status === "Needs Attention");
 
     const matchesSchool =
-      schoolFilter === 'All Schools' || s.school === schoolFilter;
+      schoolFilter === "All Schools" || s.school === schoolFilter;
 
     return matchesSearch && matchesGrade && matchesPerformance && matchesSchool;
   });
 
-  const gradeGroups = ['All Grades', 'Primary (1-5)', 'Middle (6-8)', 'High (9-10)'];
-  const performanceOptions = ['All Performance', 'Excellent', 'Satisfactory', 'Needs Attention'];
-  const schoolOptions = ['All Schools', ...new Set(students.map(s => s.school))];
+  const gradeGroups = [
+    "All Grades",
+    "Primary (1-5)",
+    "Middle (6-8)",
+    "High (9-10)",
+  ];
+  const performanceOptions = [
+    "All Performance",
+    "Excellent",
+    "Satisfactory",
+    "Needs Attention",
+  ];
+  const schoolOptions = [
+    "All Schools",
+    ...new Set(students.map((s) => s.school)),
+  ];
 
   const StatCard = ({ title, value, trend }: any) => (
     <View style={styles.statCard}>
@@ -302,7 +357,14 @@ const StudentsModule = () => {
     </View>
   );
 
-  const FilterPickerModal = ({ visible, onClose, items, selected, onSelect, title }: any) => (
+  const FilterPickerModal = ({
+    visible,
+    onClose,
+    items,
+    selected,
+    onSelect,
+    title,
+  }: any) => (
     <Modal
       visible={visible}
       transparent={true}
@@ -328,7 +390,9 @@ const StudentsModule = () => {
                 }}
               >
                 <Text style={styles.modalListItemText}>{item}</Text>
-                {selected === item && <Icon name="check" size={20} color="#059669" />}
+                {selected === item && (
+                  <Icon name="check" size={20} color="#059669" />
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -362,9 +426,9 @@ const StudentsModule = () => {
           </View>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/')}
+          onPress={() => handleNavigation("/")}
         >
           <Ionicons name="grid-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Dashboard</Text>
@@ -389,7 +453,7 @@ const StudentsModule = () => {
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_management_hub')}
+                onPress={() => handleNavigation("/education_management_hub")}
               >
                 <Ionicons name="library-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
@@ -397,7 +461,7 @@ const StudentsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_schools_module')}
+                onPress={() => handleNavigation("/education_schools_module")}
               >
                 <Ionicons name="business-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Schools Overview</Text>
@@ -405,7 +469,7 @@ const StudentsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_fellows_module')}
+                onPress={() => handleNavigation("/education_fellows_module")}
               >
                 <Ionicons name="people-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Fellows Directory</Text>
@@ -413,17 +477,23 @@ const StudentsModule = () => {
 
               <TouchableOpacity
                 style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation('/education_students_module')}
+                onPress={() => handleNavigation("/education_students_module")}
               >
                 <Ionicons name="people-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>Students Directory</Text>
+                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
+                  Students Directory
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_pta_programs')}
+                onPress={() => handleNavigation("/education_pta_programs")}
               >
-                <Ionicons name="document-text-outline" size={18} color="#6b7280" />
+                <Ionicons
+                  name="document-text-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Progress Reports</Text>
               </TouchableOpacity>
             </View>
@@ -440,7 +510,9 @@ const StudentsModule = () => {
               <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Livelihood</Text>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateLivelihood }] }}>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Animated.View>
           </TouchableOpacity>
@@ -449,7 +521,7 @@ const StudentsModule = () => {
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/livelihood_management_hub')}
+                onPress={() => handleNavigation("/livelihood_management_hub")}
               >
                 <Ionicons name="apps-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
@@ -457,7 +529,7 @@ const StudentsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/livelihood_goat_rearing_1')}
+                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
               >
                 <Ionicons name="paw-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Goat Rearing</Text>
@@ -465,7 +537,9 @@ const StudentsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/livelihood_sugarcane_cultivation')}
+                onPress={() =>
+                  handleNavigation("/livelihood_sugarcane_cultivation")
+                }
               >
                 <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Agriculture Support</Text>
@@ -473,9 +547,13 @@ const StudentsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/beneficiary_master_profile')}
+                onPress={() => handleNavigation("/beneficiary_master_profile")}
               >
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Beneficiaries</Text>
               </TouchableOpacity>
             </View>
@@ -484,7 +562,7 @@ const StudentsModule = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/disaster_relief_management')}
+          onPress={() => handleNavigation("/disaster_relief_management")}
         >
           <Ionicons name="snow-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Disaster Relief</Text>
@@ -492,7 +570,7 @@ const StudentsModule = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/hr_employee_management')}
+          onPress={() => handleNavigation("/hr_employee_management")}
         >
           <Ionicons name="people-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>HR Management</Text>
@@ -500,17 +578,84 @@ const StudentsModule = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/admin_access_control')}
+          onPress={() => handleNavigation("/admin_access_control")}
         >
           <Ionicons name="document-text-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Admin & Access</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            toggleMenu();
+            router.push("/profile");
+          }}
+        >
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
+        </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/register");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN CONTENT */}
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -520,23 +665,36 @@ const StudentsModule = () => {
             <Text style={styles.headerTitle}>Impact Portal</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => Alert.alert('Notifications', 'No new notifications')}
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
             >
-              <Ionicons name="notifications-outline" size={22} color="#6B7280" />
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#6B7280"
+              />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => Alert.alert('Settings', 'Settings will be available soon')}
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
             >
               <Ionicons name="settings-outline" size={22} color="#6B7280" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.avatar}
-              onPress={() => Alert.alert('Profile', 'User profile will be available soon')}
+              onPress={() => router.push("/profile")}
             >
-              <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={styles.avatarImage} />
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatarImage}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -544,13 +702,15 @@ const StudentsModule = () => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
           horizontal={false}
         >
           {/* Back Link */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backLink}
-            onPress={() => router.push('/education_management_hub')}
+            onPress={() => router.push("/education_management_hub")}
           >
             <Icon name="arrow-back" size={20} color="#64748b" />
             <Text style={styles.backLinkText}>Back to Education Hub</Text>
@@ -560,7 +720,8 @@ const StudentsModule = () => {
           <View style={styles.headerSection}>
             <Text style={styles.mainTitle}>Students Directory</Text>
             <Text style={styles.subtitle}>
-              Manage enrolled students, track academic progress, and monitor school linkages across all program areas.
+              Manage enrolled students, track academic progress, and monitor
+              school linkages across all program areas.
             </Text>
           </View>
 
@@ -594,11 +755,15 @@ const StudentsModule = () => {
           {/* Stats and Filters */}
           <View style={styles.statsFiltersContainer}>
             <StatCard title="Total Enrolled" value="4,285" trend="+12%" />
-            
+
             <View style={styles.filtersContainer}>
               <Text style={styles.filtersLabel}>Filters</Text>
-              
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScroll}
+              >
                 <TouchableOpacity
                   onPress={() => setShowGradePicker(true)}
                   style={styles.filterButton}
@@ -611,7 +776,9 @@ const StudentsModule = () => {
                   onPress={() => setShowPerformancePicker(true)}
                   style={styles.filterButton}
                 >
-                  <Text style={styles.filterButtonText}>{performanceFilter}</Text>
+                  <Text style={styles.filterButtonText}>
+                    {performanceFilter}
+                  </Text>
                   <Icon name="expand-more" size={18} color="#9ca3af" />
                 </TouchableOpacity>
 
@@ -620,12 +787,17 @@ const StudentsModule = () => {
                   style={styles.filterButton}
                 >
                   <Text style={styles.filterButtonText}>
-                    {schoolFilter.length > 20 ? schoolFilter.substring(0, 20) + '...' : schoolFilter}
+                    {schoolFilter.length > 20
+                      ? schoolFilter.substring(0, 20) + "..."
+                      : schoolFilter}
                   </Text>
                   <Icon name="expand-more" size={18} color="#9ca3af" />
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={clearFilters} style={styles.clearButton}>
+                <TouchableOpacity
+                  onPress={clearFilters}
+                  style={styles.clearButton}
+                >
                   <Text style={styles.clearButtonText}>Clear Filters</Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -636,10 +808,18 @@ const StudentsModule = () => {
           <View style={styles.tableContainer}>
             {/* Table Header */}
             <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, styles.studentInfoCell]}>Student Info</Text>
-              <Text style={[styles.headerCell, styles.schoolCell]}>School Linkage</Text>
-              <Text style={[styles.headerCell, styles.progressCell]}>Academic Progress</Text>
-              <Text style={[styles.headerCell, styles.actionsCell]}>Actions</Text>
+              <Text style={[styles.headerCell, styles.studentInfoCell]}>
+                Student Info
+              </Text>
+              <Text style={[styles.headerCell, styles.schoolCell]}>
+                School Linkage
+              </Text>
+              <Text style={[styles.headerCell, styles.progressCell]}>
+                Academic Progress
+              </Text>
+              <Text style={[styles.headerCell, styles.actionsCell]}>
+                Actions
+              </Text>
             </View>
 
             {/* Table Rows */}
@@ -651,8 +831,15 @@ const StudentsModule = () => {
                   {/* Student Info Column */}
                   <View style={[styles.rowCell, styles.studentInfoCell]}>
                     <View style={styles.studentInfoContainer}>
-                      <View style={[styles.initialsCircle, { backgroundColor: item.bgClass }]}>
-                        <Text style={styles.initialsCircleText}>{item.initials}</Text>
+                      <View
+                        style={[
+                          styles.initialsCircle,
+                          { backgroundColor: item.bgClass },
+                        ]}
+                      >
+                        <Text style={styles.initialsCircleText}>
+                          {item.initials}
+                        </Text>
                       </View>
                       <View style={styles.studentTextContainer}>
                         <Text style={styles.studentNameText}>{item.name}</Text>
@@ -663,43 +850,73 @@ const StudentsModule = () => {
 
                   {/* School Linkage Column */}
                   <View style={[styles.rowCell, styles.schoolCell]}>
-                    <Text style={styles.schoolNameText} numberOfLines={2}>{item.school}</Text>
-                    <Text style={styles.gradeText}>{item.grade} • {item.district}</Text>
+                    <Text style={styles.schoolNameText} numberOfLines={2}>
+                      {item.school}
+                    </Text>
+                    <Text style={styles.gradeText}>
+                      {item.grade} • {item.district}
+                    </Text>
                   </View>
 
                   {/* Academic Progress Column */}
                   <View style={[styles.rowCell, styles.progressCell]}>
                     <View style={styles.attendanceContainer}>
                       <View style={styles.attendanceHeaderRow}>
-                        <Text style={styles.attendanceLabelText}>Attendance</Text>
-                        <Text style={[styles.attendancePercentText, { color: item.attendanceColor }]}>
+                        <Text style={styles.attendanceLabelText}>
+                          Attendance
+                        </Text>
+                        <Text
+                          style={[
+                            styles.attendancePercentText,
+                            { color: item.attendanceColor },
+                          ]}
+                        >
                           {item.attendance}%
                         </Text>
                       </View>
                       <View style={styles.progressBarWrapper}>
-                        <View style={[styles.progressFill, { width: `${item.attendance}%`, backgroundColor: item.barColor }]} />
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${item.attendance}%`,
+                              backgroundColor: item.barColor,
+                            },
+                          ]}
+                        />
                         {item.hasGlow && <View style={styles.progressGlow} />}
                       </View>
-                      <View style={[styles.statusBadgeWrapper, { backgroundColor: item.statusClass }]}>
-                        <Text style={styles.statusBadgeText}>{item.status}</Text>
+                      <View
+                        style={[
+                          styles.statusBadgeWrapper,
+                          { backgroundColor: item.statusClass },
+                        ]}
+                      >
+                        <Text style={styles.statusBadgeText}>
+                          {item.status}
+                        </Text>
                       </View>
                     </View>
                   </View>
 
                   {/* Actions Column */}
                   <View style={[styles.rowCell, styles.actionsCell]}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.viewProfileBtn}
-                      onPress={() => Alert.alert('View Profile', item.name)}
+                      onPress={() => Alert.alert("View Profile", item.name)}
                     >
-                      <Text style={styles.viewProfileBtnText}>View Profile</Text>
+                      <Text style={styles.viewProfileBtnText}>
+                        View Profile
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
               ListEmptyComponent={() => (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>No student records match the selected filters.</Text>
+                  <Text style={styles.emptyStateText}>
+                    No student records match the selected filters.
+                  </Text>
                 </View>
               )}
               scrollEnabled={false}
@@ -715,7 +932,9 @@ const StudentsModule = () => {
               <TouchableOpacity style={styles.paginationButton}>
                 <Icon name="chevron-left" size={20} color="#6B7280" />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.paginationButton, styles.paginationButtonActive]}>
+              <TouchableOpacity
+                style={[styles.paginationButton, styles.paginationButtonActive]}
+              >
                 <Text style={styles.paginationButtonActiveText}>1</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.paginationButton}>
@@ -803,12 +1022,18 @@ const StudentsModule = () => {
                   <View style={styles.pickerContainer}>
                     <Picker
                       selectedValue={newStudentSchool}
-                      onValueChange={(itemValue) => setNewStudentSchool(itemValue)}
+                      onValueChange={(itemValue) =>
+                        setNewStudentSchool(itemValue)
+                      }
                       style={styles.picker}
                     >
                       <Picker.Item label="Select partner school..." value="" />
                       {DEFAULT_SCHOOLS.map((sch) => (
-                        <Picker.Item key={sch.name} label={sch.name} value={sch.name} />
+                        <Picker.Item
+                          key={sch.name}
+                          label={sch.name}
+                          value={sch.name}
+                        />
                       ))}
                     </Picker>
                   </View>
@@ -820,11 +1045,19 @@ const StudentsModule = () => {
                     <View style={styles.pickerContainer}>
                       <Picker
                         selectedValue={newStudentGradeGroup}
-                        onValueChange={(itemValue) => setNewStudentGradeGroup(itemValue)}
+                        onValueChange={(itemValue) =>
+                          setNewStudentGradeGroup(itemValue)
+                        }
                         style={styles.picker}
                       >
-                        <Picker.Item label="Primary (1-5)" value="Primary (1-5)" />
-                        <Picker.Item label="Middle (6-8)" value="Middle (6-8)" />
+                        <Picker.Item
+                          label="Primary (1-5)"
+                          value="Primary (1-5)"
+                        />
+                        <Picker.Item
+                          label="Middle (6-8)"
+                          value="Middle (6-8)"
+                        />
                         <Picker.Item label="High (9-10)" value="High (9-10)" />
                       </Picker>
                     </View>
@@ -834,10 +1067,15 @@ const StudentsModule = () => {
                     <View style={styles.pickerContainer}>
                       <Picker
                         selectedValue={newStudentGrade}
-                        onValueChange={(itemValue) => setNewStudentGrade(itemValue)}
+                        onValueChange={(itemValue) =>
+                          setNewStudentGrade(itemValue)
+                        }
                         style={styles.picker}
                       >
-                        {Array.from({ length: 10 }, (_, i) => `Grade ${i + 1}`).map(g => (
+                        {Array.from(
+                          { length: 10 },
+                          (_, i) => `Grade ${i + 1}`,
+                        ).map((g) => (
                           <Picker.Item key={g} label={g} value={g} />
                         ))}
                       </Picker>
@@ -862,12 +1100,20 @@ const StudentsModule = () => {
                     <View style={styles.pickerContainer}>
                       <Picker
                         selectedValue={newStudentStatus}
-                        onValueChange={(itemValue) => setNewStudentStatus(itemValue)}
+                        onValueChange={(itemValue) =>
+                          setNewStudentStatus(itemValue)
+                        }
                         style={styles.picker}
                       >
                         <Picker.Item label="On Track" value="On Track" />
-                        <Picker.Item label="Satisfactory" value="Satisfactory" />
-                        <Picker.Item label="Needs Attention" value="Needs Attention" />
+                        <Picker.Item
+                          label="Satisfactory"
+                          value="Satisfactory"
+                        />
+                        <Picker.Item
+                          label="Needs Attention"
+                          value="Needs Attention"
+                        />
                         <Picker.Item label="Excelling" value="Excelling" />
                       </Picker>
                     </View>
@@ -881,7 +1127,10 @@ const StudentsModule = () => {
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleAddStudent} style={styles.submitButton}>
+                  <TouchableOpacity
+                    onPress={handleAddStudent}
+                    style={styles.submitButton}
+                  >
                     <Text style={styles.submitButtonText}>Add Student</Text>
                   </TouchableOpacity>
                 </View>
@@ -980,6 +1229,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8f5e9",
     borderRadius: 8,
   },
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
   dropdownText: {
     fontSize: 13,
     color: "#6b7280",
@@ -989,24 +1244,47 @@ const styles = StyleSheet.create({
     color: "#047857",
     fontWeight: "600",
   },
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
+  // Authentication divider styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   // Main container
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   header: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: '#EDEEEF',
+    borderBottomColor: "#EDEEEF",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   menuButton: {
@@ -1014,12 +1292,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '900',
-    color: '#191C1D',
+    fontWeight: "900",
+    color: "#191C1D",
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   iconButton: {
@@ -1029,12 +1307,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#EDEEEF',
-    overflow: 'hidden',
+    backgroundColor: "#EDEEEF",
+    overflow: "hidden",
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   scrollView: {
     flex: 1,
@@ -1044,50 +1322,50 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   backLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 16,
     marginTop: 8,
   },
   backLinkText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    fontWeight: "bold",
+    textTransform: "uppercase",
     letterSpacing: 1,
-    color: '#64748b',
+    color: "#64748b",
   },
   headerSection: {
     marginBottom: 24,
   },
   mainTitle: {
     fontSize: 32,
-    fontWeight: '900',
-    color: '#0f172a',
+    fontWeight: "900",
+    color: "#0f172a",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#475569',
+    fontWeight: "500",
+    color: "#475569",
     lineHeight: 20,
   },
   actionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 24,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
     gap: 12,
   },
   searchContainer: {
     flex: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 999,
     paddingHorizontal: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1098,35 +1376,35 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     fontSize: 14,
-    color: '#0f172a',
+    color: "#0f172a",
   },
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   exportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     borderRadius: 999,
   },
   exportButtonText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: "500",
+    color: "#374151",
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
     borderRadius: 999,
-    shadowColor: '#059669',
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -1134,18 +1412,18 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   statsFiltersContainer: {
     marginBottom: 24,
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1153,33 +1431,33 @@ const styles = StyleSheet.create({
   },
   statTitle: {
     fontSize: 12,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.6,
-    color: '#64748b',
-    fontWeight: '600',
+    color: "#64748b",
+    fontWeight: "600",
     marginBottom: 8,
   },
   statValue: {
     fontSize: 32,
-    fontWeight: '900',
-    color: '#0f172a',
+    fontWeight: "900",
+    color: "#0f172a",
     marginBottom: 8,
   },
   trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   trendText: {
     fontSize: 11,
-    color: '#059669',
-    fontWeight: '500',
+    color: "#059669",
+    fontWeight: "500",
   },
   filtersContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1187,20 +1465,20 @@ const styles = StyleSheet.create({
   },
   filtersLabel: {
     fontSize: 11,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.6,
-    color: '#64748b',
-    fontWeight: '600',
+    color: "#64748b",
+    fontWeight: "600",
     marginBottom: 12,
   },
   filterScroll: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -1208,7 +1486,7 @@ const styles = StyleSheet.create({
   },
   filterButtonText: {
     fontSize: 13,
-    color: '#374151',
+    color: "#374151",
   },
   clearButton: {
     paddingHorizontal: 12,
@@ -1216,33 +1494,33 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 13,
-    color: '#059669',
-    fontWeight: '500',
+    color: "#059669",
+    fontWeight: "500",
   },
   tableContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#F9FAFB',
+    flexDirection: "row",
+    backgroundColor: "#F9FAFB",
     borderBottomWidth: 1,
-    borderBottomColor: '#EDEEEF',
+    borderBottomColor: "#EDEEEF",
     paddingVertical: 14,
     paddingHorizontal: 12,
   },
   headerCell: {
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   studentInfoCell: {
     flex: 2.2,
@@ -1258,23 +1536,23 @@ const styles = StyleSheet.create({
   },
   actionsCell: {
     flex: 1,
-    textAlign: 'right',
+    textAlign: "right",
     paddingRight: 16,
   },
   tableRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
     paddingVertical: 16,
     paddingHorizontal: 12,
     minHeight: 90,
   },
   rowCell: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   studentInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   studentTextContainer: {
@@ -1284,241 +1562,241 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   initialsCircleText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#065f46',
+    fontWeight: "bold",
+    color: "#065f46",
   },
   studentNameText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#0f172a',
+    fontWeight: "600",
+    color: "#0f172a",
     marginBottom: 2,
   },
   studentIdText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   schoolNameText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#0f172a',
+    fontWeight: "500",
+    color: "#0f172a",
     marginBottom: 4,
     lineHeight: 18,
   },
   gradeText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   attendanceContainer: {
-    width: '100%',
+    width: "100%",
   },
   attendanceHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 6,
   },
   attendanceLabelText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   attendancePercentText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   progressBarWrapper: {
     height: 6,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 10,
-    position: 'relative',
+    position: "relative",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   progressGlow: {
-    position: 'absolute',
+    position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: "rgba(255,255,255,0.5)",
     borderRadius: 2,
   },
   statusBadgeWrapper: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   statusBadgeText: {
     fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
-    color: '#065f46',
+    color: "#065f46",
   },
   viewProfileBtn: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: "#F0FDF4",
     borderRadius: 20,
   },
   viewProfileBtnText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: "600",
+    color: "#059669",
   },
   emptyState: {
     padding: 48,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyStateText: {
-    color: '#9ca3af',
-    textAlign: 'center',
+    color: "#9ca3af",
+    textAlign: "center",
   },
   paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#EDEEEF',
+    borderTopColor: "#EDEEEF",
     marginTop: 8,
   },
   paginationInfo: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   paginationButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   paginationButton: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
   },
   paginationButtonActive: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
   },
   paginationButtonActiveText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
     fontSize: 14,
   },
   paginationButtonText: {
-    color: '#374151',
-    fontWeight: '500',
+    color: "#374151",
+    fontWeight: "500",
     fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#0f172a',
+    fontWeight: "600",
+    color: "#0f172a",
   },
   modalList: {
     maxHeight: 400,
   },
   modalListItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: "#f3f4f6",
   },
   modalListItemText: {
-    color: '#0f172a',
+    color: "#0f172a",
   },
   addModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
     padding: 24,
     margin: 16,
-    alignSelf: 'center',
-    maxHeight: '90%',
+    alignSelf: "center",
+    maxHeight: "90%",
   },
   addModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   addModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f172a',
+    fontWeight: "bold",
+    color: "#0f172a",
   },
   formContainer: {
     gap: 16,
   },
   formLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.4,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 6,
   },
   formInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#0f172a',
+    color: "#0f172a",
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   picker: {
     height: 44,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   halfField: {
     flex: 1,
   },
   formButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: 12,
     paddingTop: 16,
   },
@@ -1527,20 +1805,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
   },
   cancelButtonText: {
-    color: '#0f172a',
+    color: "#0f172a",
   },
   submitButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
   },
   submitButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
 });
 

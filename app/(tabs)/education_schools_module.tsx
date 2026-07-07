@@ -1,79 +1,84 @@
-import React, { useState, useRef } from 'react';
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  View,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Modal,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  RefreshControl,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+  View,
+} from "react-native";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 // Theme Colors
 const colors = {
-  primary: '#006857',
-  primaryContainer: '#00846e',
-  onPrimary: '#ffffff',
-  onPrimaryContainer: '#f4fffa',
-  primaryFixed: '#7cf8da',
-  onPrimaryFixed: '#00201a',
-  surface: '#f8f9fa',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f3f4f5',
-  surfaceContainer: '#edeeef',
-  surfaceContainerHighest: '#e1e3e4',
-  onSurface: '#191c1d',
-  onSurfaceVariant: '#3d4945',
-  outlineVariant: '#bccac4',
-  secondary: '#964900',
-  secondaryContainer: '#fc820c',
-  error: '#ba1a1a',
-  errorContainer: '#ffdad6',
+  primary: "#006857",
+  primaryContainer: "#00846e",
+  onPrimary: "#ffffff",
+  onPrimaryContainer: "#f4fffa",
+  primaryFixed: "#7cf8da",
+  onPrimaryFixed: "#00201a",
+  surface: "#f8f9fa",
+  surfaceContainerLowest: "#ffffff",
+  surfaceContainerLow: "#f3f4f5",
+  surfaceContainer: "#edeeef",
+  surfaceContainerHighest: "#e1e3e4",
+  onSurface: "#191c1d",
+  onSurfaceVariant: "#3d4945",
+  outlineVariant: "#bccac4",
+  secondary: "#964900",
+  secondaryContainer: "#fc820c",
+  error: "#ba1a1a",
+  errorContainer: "#ffdad6",
+  rose: "#ef4444",
+  emerald: "#10b981",
 };
 
 // Schools Data
 const schoolsData = [
   {
     id: 1,
-    name: 'Oakridge Academy',
-    district: 'North District',
+    name: "Oakridge Academy",
+    district: "North District",
     enrolled: 1240,
     programs: 4,
     impact: 85,
-    status: 'Active',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAd0x1ztc9iuj8nay2xC1_MH-xTSmAKr8IhFrASNZRkSKkt-Y4BunC5I9iqvTLQ0_8lmU0zaYnPjqddtwFcC75fjZRBUU-N_7DG60EY9HluYt_nZMGUi1MCuGMs9ZtR2iM2AGFyw2MvZhg-RlW1as3xPOOXef7qU9OwfisCQeoCv_6chJeBZbBMdmknEG_LLtMl_EWluwSEWTOAEkWm2p31lCjaolK7bQHfqtZzT6CLsbLoare9Nu918oPHFj07H0LgIShvW4giB6YL',
+    status: "Active",
+    image:
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuAd0x1ztc9iuj8nay2xC1_MH-xTSmAKr8IhFrASNZRkSKkt-Y4BunC5I9iqvTLQ0_8lmU0zaYnPjqddtwFcC75fjZRBUU-N_7DG60EY9HluYt_nZMGUi1MCuGMs9ZtR2iM2AGFyw2MvZhg-RlW1as3xPOOXef7qU9OwfisCQeoCv_6chJeBZbBMdmknEG_LLtMl_EWluwSEWTOAEkWm2p31lCjaolK7bQHfqtZzT6CLsbLoare9Nu918oPHFj07H0LgIShvW4giB6YL",
   },
   {
     id: 2,
-    name: 'Riverside Public',
-    district: 'East Valley',
+    name: "Riverside Public",
+    district: "East Valley",
     enrolled: 850,
     programs: 2,
     impact: 42,
-    status: 'Review',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCz5AwPFuwFIR2gamqHGmS3Z3IdTDQwW83VVeH6b9NJQeyhwstun166F-NBJdmvRxVedIL-KvP2kSfrxII7pBp79OmeBVj_J6PnuiUawZodfc0uJXAvWrakkcwnw4Hqf3XMp1L_FWf3gbWbnqajq_B2L9R61bXpsmng6PGHQ1DhYHPRtNj0FIVW9oXuywykoMFb8kYgru_HD_DkySGwo1b-jcWzvibQ5MZ6R3bzcPgSiBKeu0Rk1ETZRc61Hdu6z3xj1KNhL2dgFdP5',
+    status: "Review",
+    image:
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuCz5AwPFuwFIR2gamqHGmS3Z3IdTDQwW83VVeH6b9NJQeyhwstun166F-NBJdmvRxVedIL-KvP2kSfrxII7pBp79OmeBVj_J6PnuiUawZodfc0uJXAvWrakkcwnw4Hqf3XMp1L_FWf3gbWbnqajq_B2L9R61bXpsmng6PGHQ1DhYHPRtNj0FIVW9oXuywykoMFb8kYgru_HD_DkySGwo1b-jcWzvibQ5MZ6R3bzcPgSiBKeu0Rk1ETZRc61Hdu6z3xj1KNhL2dgFdP5",
   },
   {
     id: 3,
-    name: 'Summit Prep',
-    district: 'West Highlands',
+    name: "Summit Prep",
+    district: "West Highlands",
     enrolled: 2100,
     programs: 7,
     impact: 94,
-    status: 'Active',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB3JsQ8gLDGjXcAskdAgUZD_gbTWPDpCHJ32DnFoopdp-_p5I_tgEYtvw4dOCafH7MyasL1dS3wak_92AIaWlwMwG3sj4MjB1WuLlaXIrD_Pgmeuj-7QDOpOBBGV61QzLmn-ToK-R2LhxD-uDv5RiRqzcVeF6dzd8NDuP0UxUs4_6vkZrksOHYi1xW4AxQWl2kD1120kSJ72va_hR5sAs4V-2ir50bTZl6Oc9Rb9HATjyWanXkUOJDd6GDhhJaAsICMPa-8RFXRUFJx',
+    status: "Active",
+    image:
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuB3JsQ8gLDGjXcAskdAgUZD_gbTWPDpCHJ32DnFoopdp-_p5I_tgEYtvw4dOCafH7MyasL1dS3wak_92AIaWlwMwG3sj4MjB1WuLlaXIrD_Pgmeuj-7QDOpOBBGV61QzLmn-ToK-R2LhxD-uDv5RiRqzcVeF6dzd8NDuP0UxUs4_6vkZrksOHYi1xW4AxQWl2kD1120kSJ72va_hR5sAs4V-2ir50bTZl6Oc9Rb9HATjyWanXkUOJDd6GDhhJaAsICMPa-8RFXRUFJx",
   },
 ];
 
@@ -84,12 +89,17 @@ const Footer = () => {
       <View style={styles.footerContent}>
         <View style={styles.footerSection}>
           <View style={styles.footerLogoContainer}>
-            <LinearGradient colors={[colors.primary, colors.primaryContainer]} style={styles.footerLogoIcon}>
+            <LinearGradient
+              colors={[colors.primary, colors.primaryContainer]}
+              style={styles.footerLogoIcon}
+            >
               <MaterialIcons name="local-library" size={24} color="#fff" />
             </LinearGradient>
             <Text style={styles.footerFoundationName}>Aman Foundation</Text>
           </View>
-          <Text style={styles.footerTagline}>Creating lasting impact in communities</Text>
+          <Text style={styles.footerTagline}>
+            Creating lasting impact in communities
+          </Text>
         </View>
 
         <View style={styles.footerSection}>
@@ -100,7 +110,9 @@ const Footer = () => {
           </View>
           <View style={styles.footerContactItem}>
             <Ionicons name="mail-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>info@amanfoundation.org</Text>
+            <Text style={styles.footerContactText}>
+              info@amanfoundation.org
+            </Text>
           </View>
           <View style={styles.footerContactItem}>
             <Ionicons name="location-outline" size={16} color="#6B7280" />
@@ -112,13 +124,17 @@ const Footer = () => {
           <Text style={styles.footerSectionTitle}>Foundation Address</Text>
           <View style={styles.footerContactItem}>
             <Ionicons name="home-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerAddressText}>Mumbai{'\n'}Sector F-11/3, Maha{'\n'}India</Text>
+            <Text style={styles.footerAddressText}>
+              Mumbai{"\n"}Sector F-11/3, Maha{"\n"}India
+            </Text>
           </View>
         </View>
       </View>
 
       <View style={styles.footerBottom}>
-        <Text style={styles.footerCopyright}>© 2026 Aman Foundation. All Rights Reserved.</Text>
+        <Text style={styles.footerCopyright}>
+          © 2026 Aman Foundation. All Rights Reserved.
+        </Text>
         <View style={styles.footerLinks}>
           <Text style={styles.footerLinkText}>Terms & Conditions</Text>
           <Text style={styles.footerDot}>•</Text>
@@ -142,12 +158,23 @@ const SchoolCard = ({ school, onPress }) => (
         <View>
           <Text style={styles.schoolName}>{school.name}</Text>
           <View style={styles.locationContainer}>
-            <MaterialIcons name="location-on" size={14} color={colors.onSurfaceVariant} />
+            <MaterialIcons
+              name="location-on"
+              size={14}
+              color={colors.onSurfaceVariant}
+            />
             <Text style={styles.schoolLocation}>{school.district}</Text>
           </View>
         </View>
       </View>
-      <View style={[styles.statusBadge, school.status === 'Active' ? styles.statusActive : styles.statusReview]}>
+      <View
+        style={[
+          styles.statusBadge,
+          school.status === "Active"
+            ? styles.statusActive
+            : styles.statusReview,
+        ]}
+      >
         <Text style={styles.statusText}>{school.status}</Text>
       </View>
     </View>
@@ -166,7 +193,12 @@ const SchoolCard = ({ school, onPress }) => (
     <View>
       <View style={styles.goalHeader}>
         <Text style={styles.goalLabel}>Impact Goal</Text>
-        <Text style={[styles.goalPercentage, school.impact >= 85 ? styles.goalSuccess : styles.goalWarning]}>
+        <Text
+          style={[
+            styles.goalPercentage,
+            school.impact >= 85 ? styles.goalSuccess : styles.goalWarning,
+          ]}
+        >
           {school.impact}%
         </Text>
       </View>
@@ -179,11 +211,18 @@ const SchoolCard = ({ school, onPress }) => (
 
 export default function SchoolsModule() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [showFooter, setShowFooter] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
+  const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(-width)).current;
+  const educationRotateAnim = useRef(new Animated.Value(0)).current;
+  const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
 
   const toggleMenu = () => {
     if (menuOpen) {
@@ -202,6 +241,71 @@ export default function SchoolsModule() {
     }
   };
 
+  const toggleEducationDropdown = () => {
+    const toValue = educationDropdownOpen ? 0 : 1;
+    Animated.timing(educationRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setEducationDropdownOpen(!educationDropdownOpen);
+  };
+
+  const toggleLivelihoodDropdown = () => {
+    const toValue = livelihoodDropdownOpen ? 0 : 1;
+    Animated.timing(livelihoodRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
+  };
+
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
+  const handleNavigation = (route: string) => {
+    toggleMenu();
+    router.push(route);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert("Success", "Logged out successfully");
+          router.replace("/login");
+        },
+      },
+    ]);
+  };
+
+  const rotateEducation = educationRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const rotateLivelihood = livelihoodRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const rotateAuth = authRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 2000);
@@ -212,20 +316,32 @@ export default function SchoolsModule() {
     setShowFooter(offsetY > 450);
   };
 
-  const filteredSchools = schoolsData.filter((school) =>
-    school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    school.district.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSchools = schoolsData.filter(
+    (school) =>
+      school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      school.district.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
     <View style={{ flex: 1 }}>
       {/* OVERLAY */}
-      {menuOpen && <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={toggleMenu} />}
+      {menuOpen && (
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={toggleMenu}
+        />
+      )}
 
       {/* SIDEBAR */}
-      <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+      <Animated.View
+        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
+      >
         <View style={styles.brandContainer}>
-          <LinearGradient colors={[colors.primary, colors.primaryContainer]} style={styles.brandIcon}>
+          <LinearGradient
+            colors={[colors.primary, colors.primaryContainer]}
+            style={styles.brandIcon}
+          >
             <MaterialIcons name="local-library" size={22} color="#fff" />
           </LinearGradient>
           <View>
@@ -234,55 +350,227 @@ export default function SchoolsModule() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/"); }}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/")}
+        >
           <Ionicons name="grid-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Dashboard</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/education_management_hub"); }}>
-          <Ionicons name="school-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Education</Text>
-        </TouchableOpacity>
+        {/* EDUCATION WITH DROPDOWN */}
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleEducationDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="school-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Education</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/education_fellows_module"); }}>
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Fellows</Text>
-        </TouchableOpacity>
+          {educationDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_management_hub")}
+              >
+                <Ionicons name="library-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Management Hub</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_fellows_module")}
+              >
+                <Ionicons name="people-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Fellows Directory</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_students_module")}
+              >
+                <Ionicons name="happy-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Students</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemActive]}
+                onPress={() => handleNavigation("/education_schools_module")}
+              >
+                <Ionicons name="business-outline" size={18} color="#047857" />
+                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
+                  Schools
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_pta_programs")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
+                <Text style={styles.dropdownText}>PTA & Programs</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/education_students_module"); }}>
-          <Ionicons name="happy-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Students</Text>
-        </TouchableOpacity>
+        {/* LIVELIHOOD WITH DROPDOWN */}
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleLivelihoodDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Livelihood</Text>
+            </View>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItemActive}>
-          <Ionicons name="business-outline" size={20} color="#fff" />
-          <Text style={styles.menuTextActive}>Schools</Text>
-        </TouchableOpacity>
+          {livelihoodDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_management_hub")}
+              >
+                <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Management Hub</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
+              >
+                <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Goat Rearing</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() =>
+                  handleNavigation("/livelihood_sugarcane_cultivation")
+                }
+              >
+                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Agriculture Support</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/beneficiary_master_profile")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
+                <Text style={styles.dropdownText}>Beneficiaries</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/education_pta_programs"); }}>
-          <Ionicons name="people-circle-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>PTA & Programs</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/livelihood_management_hub"); }}>
-          <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Livelihood</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/disaster_relief_management"); }}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/disaster_relief_management")}
+        >
           <Ionicons name="snow-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Disaster Relief</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/hr_employee_management"); }}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/hr_employee_management")}
+        >
           <Ionicons name="people-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>HR Management</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); router.push("/admin_access_control"); }}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/admin_access_control")}
+        >
           <Ionicons name="document-text-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Admin & Access</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            toggleMenu();
+            router.push("/profile");
+          }}
+        >
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
+        </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/register");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={colors.rose}
+                />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN CONTENT */}
@@ -296,13 +584,32 @@ export default function SchoolsModule() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Impact Portal</Text>
           <View style={styles.headerIcons}>
-            <TouchableOpacity>
-              <Ionicons name="notifications-outline" size={22} color="#1f2937" />
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#1f2937"
+              />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
+            >
               <Ionicons name="settings-outline" size={22} color="#1f2937" />
             </TouchableOpacity>
-            <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={styles.avatar} />
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -311,10 +618,19 @@ export default function SchoolsModule() {
           contentContainerStyle={{ padding: 20, gap: 24 }}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+            />
+          }
         >
           {/* Back Button */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/education_management_hub")}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.push("/education_management_hub")}
+          >
             <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
             <Text style={styles.backText}>Back to Education Hub</Text>
           </TouchableOpacity>
@@ -323,14 +639,19 @@ export default function SchoolsModule() {
           <View>
             <Text style={styles.mainTitle}>Schools Module</Text>
             <Text style={styles.subtitle}>
-              Monitoring school profiles, program participation, and geographic impact across targeted regions.
+              Monitoring school profiles, program participation, and geographic
+              impact across targeted regions.
             </Text>
           </View>
 
           {/* Search and Export */}
           <View style={styles.actionContainer}>
             <View style={styles.searchContainer}>
-              <MaterialIcons name="search" size={20} color={colors.onSurfaceVariant} />
+              <MaterialIcons
+                name="search"
+                size={20}
+                color={colors.onSurfaceVariant}
+              />
               <TextInput
                 placeholder="Search schools..."
                 value={searchQuery}
@@ -352,11 +673,18 @@ export default function SchoolsModule() {
           {/* Map & Stats Section */}
           <View style={styles.mapContainer}>
             <View style={styles.mapCard}>
-              <Image source={{ uri: 'https://picsum.photos/800/400?grayscale' }} style={styles.mapImage} />
+              <Image
+                source={{ uri: "https://picsum.photos/800/400?grayscale" }}
+                style={styles.mapImage}
+              />
               <BlurView intensity={80} tint="light" style={styles.mapOverlay}>
                 <View style={styles.mapOverlayHeader}>
                   <Text style={styles.mapOverlayTitle}>Regional Impact</Text>
-                  <MaterialIcons name="public" size={20} color={colors.primary} />
+                  <MaterialIcons
+                    name="public"
+                    size={20}
+                    color={colors.primary}
+                  />
                 </View>
                 <View style={styles.mapStats}>
                   <View>
@@ -365,16 +693,27 @@ export default function SchoolsModule() {
                   </View>
                   <View>
                     <Text style={styles.mapStatLabel}>Active Students</Text>
-                    <Text style={[styles.mapStatValue, { color: colors.primary }]}>45.2k</Text>
+                    <Text
+                      style={[styles.mapStatValue, { color: colors.primary }]}
+                    >
+                      45.2k
+                    </Text>
                   </View>
                 </View>
               </BlurView>
             </View>
 
             <View style={styles.rightStats}>
-              <LinearGradient colors={[colors.primaryContainer, colors.primaryContainer]} style={styles.impactCard}>
+              <LinearGradient
+                colors={[colors.primaryContainer, colors.primaryContainer]}
+                style={styles.impactCard}
+              >
                 <View style={styles.impactHeader}>
-                  <MaterialIcons name="trending-up" size={20} color={colors.onPrimaryContainer} />
+                  <MaterialIcons
+                    name="trending-up"
+                    size={20}
+                    color={colors.onPrimaryContainer}
+                  />
                   <Text style={styles.impactLabel}>Overall Impact Score</Text>
                 </View>
                 <View style={styles.impactScore}>
@@ -388,7 +727,9 @@ export default function SchoolsModule() {
                       <Text style={styles.impactPercent}>92%</Text>
                     </View>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressFillSmall, { width: '92%' }]} />
+                      <View
+                        style={[styles.progressFillSmall, { width: "92%" }]}
+                      />
                     </View>
                   </View>
                   <View>
@@ -397,7 +738,9 @@ export default function SchoolsModule() {
                       <Text style={styles.impactPercent}>78%</Text>
                     </View>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressFillSmall, { width: '78%' }]} />
+                      <View
+                        style={[styles.progressFillSmall, { width: "78%" }]}
+                      />
                     </View>
                   </View>
                 </View>
@@ -407,10 +750,16 @@ export default function SchoolsModule() {
                 <Text style={styles.alertLabel}>Needs Attention</Text>
                 <View style={styles.alertContent}>
                   <View style={styles.alertIcon}>
-                    <MaterialIcons name="warning" size={20} color={colors.secondary} />
+                    <MaterialIcons
+                      name="warning"
+                      size={20}
+                      color={colors.secondary}
+                    />
                   </View>
                   <View>
-                    <Text style={styles.alertText}>3 Schools require immediate resource restocking.</Text>
+                    <Text style={styles.alertText}>
+                      3 Schools require immediate resource restocking.
+                    </Text>
                     <TouchableOpacity>
                       <Text style={styles.alertLink}>Review Inventory</Text>
                     </TouchableOpacity>
@@ -426,7 +775,11 @@ export default function SchoolsModule() {
               <Text style={styles.featuredTitle}>Featured Profiles</Text>
               <TouchableOpacity style={styles.viewAllButton}>
                 <Text style={styles.viewAllText}>View All Directory</Text>
-                <MaterialIcons name="arrow-forward" size={14} color={colors.primary} />
+                <MaterialIcons
+                  name="arrow-forward"
+                  size={14}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
             </View>
             <View>
@@ -461,8 +814,8 @@ export default function SchoolsModule() {
     </View>
   );
 }
-const styles = StyleSheet.create({
 
+const styles = StyleSheet.create({
   /* ========================================
      SIDEBAR & NAVIGATION
   ======================================== */
@@ -520,6 +873,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  menuItemWithDropdown: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginBottom: 5,
+  },
+
+  menuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
   menuText: {
     marginLeft: 12,
     fontSize: 14,
@@ -541,6 +909,71 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginLeft: 12,
     fontWeight: "600",
+  },
+
+  dropdownContainer: {
+    marginLeft: 32,
+    marginBottom: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: "#e5e7eb",
+    paddingLeft: 12,
+  },
+
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+
+  dropdownItemActive: {
+    backgroundColor: "#e8f5e9",
+    borderRadius: 8,
+  },
+
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
+
+  dropdownText: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginLeft: 10,
+  },
+
+  dropdownTextActive: {
+    color: "#047857",
+    fontWeight: "600",
+  },
+
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
+
+  // Authentication divider styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   /* ========================================

@@ -1,27 +1,27 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import { router } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  View,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Modal,
-  FlatList,
-  Alert,
-  RefreshControl,
-  StatusBar,
-  StyleSheet,
-  Animated,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { router } from 'expo-router';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 // Types
 interface Milestone {
@@ -42,27 +42,30 @@ interface Fellow {
 
 const FellowsModule = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedCohort, setSelectedCohort] = useState('All');
-  const [selectedDistrict, setSelectedDistrict] = useState('All');
+  const [selectedCohort, setSelectedCohort] = useState("All");
+  const [selectedDistrict, setSelectedDistrict] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
   const [showCohortPicker, setShowCohortPicker] = useState(false);
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
-  
+
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
-  
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+
   // Animated values
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
-  
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
+
   const [fellows, setFellows] = useState<Fellow[]>([
     {
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuC7gMo5puf1sV4uTm3qk1tT-zVJzNDhR17iH7pqq5iCccFjIOCE8W3EHYIp9rK3D066Q9ZkVjeLVtNwSBF9m1-hvbOUGfnjJRGIchuJ3Eh6rp7nQKBpqZJzMPBwV1Qz0kmOpVSOMreor-iUVKwSv67qJNrwuROO0mgJdvBeUHMDI7zmdq1qTUV0QVFCkkSQdtuaqu2lruZIChfw5S3KIqkr12xKbUERZvogsBdHSPGMGD5RG1KZ_J33Im7k3p4NaNTFC6WFYrzLKONE",
+      avatar:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuC7gMo5puf1sV4uTm3qk1tT-zVJzNDhR17iH7pqq5iCccFjIOCE8W3EHYIp9rK3D066Q9ZkVjeLVtNwSBF9m1-hvbOUGfnjJRGIchuJ3Eh6rp7nQKBpqZJzMPBwV1Qz0kmOpVSOMreor-iUVKwSv67qJNrwuROO0mgJdvBeUHMDI7zmdq1qTUV0QVFCkkSQdtuaqu2lruZIChfw5S3KIqkr12xKbUERZvogsBdHSPGMGD5RG1KZ_J33Im7k3p4NaNTFC6WFYrzLKONE",
       name: "Aisha Rahman",
       cohort: "Cohort '23",
       location: "Bartari, Kalgachia",
@@ -74,7 +77,8 @@ const FellowsModule = () => {
       lastUpdated: "2d ago",
     },
     {
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAyU2sk7MSF4O2N4v8tJyIJNfFFC-6k-MyJtM5UWnT68i4JIYVkOBu1pyvnRVdCmTIJDnx-PfGfOEnCJQ0R8CExOGEexqyfB1z4fmKGD0ZZpppomizo-LBDvgJ8cSyY7UCjxoCUf783rsdV_XGiKoyguceMlyb-QzZCf9Gl9MgF3zpl4Q4Y7qPKZ5wjhJdmNIwaFQ7oS2PR9wLYxjBEnkfftf-mWeb4t8u9qmDaop-LQNHejgvZkDUN_y3R2yStAL7Yvw-mXwMoaQdf",
+      avatar:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuAyU2sk7MSF4O2N4v8tJyIJNfFFC-6k-MyJtM5UWnT68i4JIYVkOBu1pyvnRVdCmTIJDnx-PfGfOEnCJQ0R8CExOGEexqyfB1z4fmKGD0ZZpppomizo-LBDvgJ8cSyY7UCjxoCUf783rsdV_XGiKoyguceMlyb-QzZCf9Gl9MgF3zpl4Q4Y7qPKZ5wjhJdmNIwaFQ7oS2PR9wLYxjBEnkfftf-mWeb4t8u9qmDaop-LQNHejgvZkDUN_y3R2yStAL7Yvw-mXwMoaQdf",
       name: "Fatima Tariq",
       cohort: "Cohort '24",
       location: "Digjani, Kalgachia",
@@ -100,10 +104,10 @@ const FellowsModule = () => {
   ]);
 
   // Form states
-  const [newFellowName, setNewFellowName] = useState('');
+  const [newFellowName, setNewFellowName] = useState("");
   const [newCohort, setNewCohort] = useState("Cohort '24");
-  const [newLocation, setNewLocation] = useState('');
-  const [newProgress, setNewProgress] = useState('50');
+  const [newLocation, setNewLocation] = useState("");
+  const [newProgress, setNewProgress] = useState("50");
 
   const toggleMenu = () => {
     if (menuOpen) {
@@ -142,9 +146,34 @@ const FellowsModule = () => {
     setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
   };
 
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
   const handleNavigation = (route: string) => {
     toggleMenu();
     router.push(route);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert("Success", "Logged out successfully");
+          router.replace("/login");
+        },
+      },
+    ]);
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -157,16 +186,21 @@ const FellowsModule = () => {
     outputRange: ["0deg", "180deg"],
   });
 
+  const rotateAuth = authRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
   const handleAddFellow = () => {
     if (!newFellowName || !newLocation) {
-      Alert.alert('Error', 'Please fill all required fields');
+      Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
     const initials = newFellowName
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .substring(0, 2);
 
@@ -184,11 +218,11 @@ const FellowsModule = () => {
     };
 
     setFellows([newFellow, ...fellows]);
-    setNewFellowName('');
-    setNewLocation('');
-    setNewProgress('50');
+    setNewFellowName("");
+    setNewLocation("");
+    setNewProgress("50");
     setShowAddModal(false);
-    Alert.alert('Success', 'Fellow registered successfully');
+    Alert.alert("Success", "Fellow registered successfully");
   };
 
   const onRefresh = () => {
@@ -196,15 +230,15 @@ const FellowsModule = () => {
     setTimeout(() => setRefreshing(false), 1500);
   };
 
-  const cohorts = ['All', ...new Set(fellows.map(f => f.cohort))];
-  const districts = ['All', ...new Set(fellows.map(f => f.location))];
+  const cohorts = ["All", ...new Set(fellows.map((f) => f.cohort))];
+  const districts = ["All", ...new Set(fellows.map((f) => f.location))];
 
   const filteredFellows = fellows.filter(
-    f =>
+    (f) =>
       (f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         f.location.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      (selectedCohort === 'All' || f.cohort === selectedCohort) &&
-      (selectedDistrict === 'All' || f.location === selectedDistrict)
+      (selectedCohort === "All" || f.cohort === selectedCohort) &&
+      (selectedDistrict === "All" || f.location === selectedDistrict),
   );
 
   const MetricCard = ({ title, value, subtitle, trend }: any) => (
@@ -230,7 +264,7 @@ const FellowsModule = () => {
           styles.progressBarFill,
           {
             width: `${progress}%`,
-            backgroundColor: progress > 50 ? '#10b981' : '#f59e0b',
+            backgroundColor: progress > 50 ? "#10b981" : "#f59e0b",
           },
         ]}
       />
@@ -240,7 +274,7 @@ const FellowsModule = () => {
   const navigateToProfile = (fellow: Fellow) => {
     router.push({
       pathname: "/education_fellow_profile",
-      params: { fellow: JSON.stringify(fellow) }
+      params: { fellow: JSON.stringify(fellow) },
     });
   };
 
@@ -280,7 +314,7 @@ const FellowsModule = () => {
           <Text
             style={[
               styles.progressPercentage,
-              { color: item.progress > 50 ? '#059669' : '#ea580c' },
+              { color: item.progress > 50 ? "#059669" : "#ea580c" },
             ]}
           >
             {item.progress}%
@@ -298,28 +332,28 @@ const FellowsModule = () => {
                 styles.milestoneIcon,
                 {
                   backgroundColor: milestone.done
-                    ? '#d1fae5'
-                    : milestone.text.includes('Action Required')
-                    ? '#ffedd5'
-                    : '#f3f4f6',
+                    ? "#d1fae5"
+                    : milestone.text.includes("Action Required")
+                      ? "#ffedd5"
+                      : "#f3f4f6",
                 },
               ]}
             >
               <Icon
                 name={
                   milestone.done
-                    ? 'check'
-                    : milestone.text.includes('Action Required')
-                    ? 'warning'
-                    : 'schedule'
+                    ? "check"
+                    : milestone.text.includes("Action Required")
+                      ? "warning"
+                      : "schedule"
                 }
                 size={12}
                 color={
                   milestone.done
-                    ? '#059669'
-                    : milestone.text.includes('Action Required')
-                    ? '#ea580c'
-                    : '#9ca3af'
+                    ? "#059669"
+                    : milestone.text.includes("Action Required")
+                      ? "#ea580c"
+                      : "#9ca3af"
                 }
               />
             </View>
@@ -362,7 +396,7 @@ const FellowsModule = () => {
             style={[
               styles.progressBadge,
               {
-                backgroundColor: item.progress > 70 ? '#d1fae5' : '#ffedd5',
+                backgroundColor: item.progress > 70 ? "#d1fae5" : "#ffedd5",
               },
             ]}
           >
@@ -370,7 +404,7 @@ const FellowsModule = () => {
               style={[
                 styles.progressBadgeText,
                 {
-                  color: item.progress > 70 ? '#065f46' : '#9a3412',
+                  color: item.progress > 70 ? "#065f46" : "#9a3412",
                 },
               ]}
             >
@@ -384,7 +418,14 @@ const FellowsModule = () => {
     </TouchableOpacity>
   );
 
-  const FilterPickerModal = ({ visible, onClose, items, selected, onSelect, title }: any) => (
+  const FilterPickerModal = ({
+    visible,
+    onClose,
+    items,
+    selected,
+    onSelect,
+    title,
+  }: any) => (
     <Modal
       visible={visible}
       transparent={true}
@@ -410,13 +451,15 @@ const FellowsModule = () => {
                 }}
               >
                 <Text style={styles.modalListItemText}>
-                  {item === 'All'
-                    ? title === 'Select Cohort'
-                      ? 'All Cohorts'
-                      : 'All Districts'
+                  {item === "All"
+                    ? title === "Select Cohort"
+                      ? "All Cohorts"
+                      : "All Districts"
                     : item}
                 </Text>
-                {selected === item && <Icon name="check" size={20} color="#059669" />}
+                {selected === item && (
+                  <Icon name="check" size={20} color="#059669" />
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -450,9 +493,9 @@ const FellowsModule = () => {
           </View>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/')}
+          onPress={() => handleNavigation("/")}
         >
           <Ionicons name="grid-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Dashboard</Text>
@@ -477,7 +520,7 @@ const FellowsModule = () => {
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_management_hub')}
+                onPress={() => handleNavigation("/education_management_hub")}
               >
                 <Ionicons name="library-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
@@ -485,7 +528,7 @@ const FellowsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_schools_module')}
+                onPress={() => handleNavigation("/education_schools_module")}
               >
                 <Ionicons name="business-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Schools Overview</Text>
@@ -493,15 +536,17 @@ const FellowsModule = () => {
 
               <TouchableOpacity
                 style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation('/education_fellows_module')}
+                onPress={() => handleNavigation("/education_fellows_module")}
               >
                 <Ionicons name="people-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>Fellows Directory</Text>
+                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
+                  Fellows Directory
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_students_module')}
+                onPress={() => handleNavigation("/education_students_module")}
               >
                 <Ionicons name="calendar-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Active Programs</Text>
@@ -509,9 +554,13 @@ const FellowsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/education_pta_programs')}
+                onPress={() => handleNavigation("/education_pta_programs")}
               >
-                <Ionicons name="document-text-outline" size={18} color="#6b7280" />
+                <Ionicons
+                  name="document-text-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Progress Reports</Text>
               </TouchableOpacity>
             </View>
@@ -528,7 +577,9 @@ const FellowsModule = () => {
               <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Livelihood</Text>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateLivelihood }] }}>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Animated.View>
           </TouchableOpacity>
@@ -537,7 +588,7 @@ const FellowsModule = () => {
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/livelihood_management_hub')}
+                onPress={() => handleNavigation("/livelihood_management_hub")}
               >
                 <Ionicons name="apps-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
@@ -545,7 +596,7 @@ const FellowsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/livelihood_goat_rearing_1')}
+                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
               >
                 <Ionicons name="paw-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Goat Rearing</Text>
@@ -553,7 +604,9 @@ const FellowsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/livelihood_sugarcane_cultivation')}
+                onPress={() =>
+                  handleNavigation("/livelihood_sugarcane_cultivation")
+                }
               >
                 <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Agriculture Support</Text>
@@ -561,9 +614,13 @@ const FellowsModule = () => {
 
               <TouchableOpacity
                 style={styles.dropdownItem}
-                onPress={() => handleNavigation('/beneficiary_master_profile')}
+                onPress={() => handleNavigation("/beneficiary_master_profile")}
               >
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Beneficiaries</Text>
               </TouchableOpacity>
             </View>
@@ -572,7 +629,7 @@ const FellowsModule = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/disaster_relief_management')}
+          onPress={() => handleNavigation("/disaster_relief_management")}
         >
           <Ionicons name="snow-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Disaster Relief</Text>
@@ -580,7 +637,7 @@ const FellowsModule = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/hr_employee_management')}
+          onPress={() => handleNavigation("/hr_employee_management")}
         >
           <Ionicons name="people-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>HR Management</Text>
@@ -588,17 +645,84 @@ const FellowsModule = () => {
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => handleNavigation('/admin_access_control')}
+          onPress={() => handleNavigation("/admin_access_control")}
         >
           <Ionicons name="document-text-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Admin & Access</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            toggleMenu();
+            router.push("/profile");
+          }}
+        >
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
+        </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/register");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN CONTENT */}
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-        
+
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
@@ -607,23 +731,36 @@ const FellowsModule = () => {
             <Text style={styles.headerTitle}>Impact Portal</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => Alert.alert('Notifications', 'No new notifications')}
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
             >
-              <Ionicons name="notifications-outline" size={22} color="#6B7280" />
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#6B7280"
+              />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => Alert.alert('Settings', 'Settings will be available soon')}
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
             >
               <Ionicons name="settings-outline" size={22} color="#6B7280" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.avatar}
-              onPress={() => Alert.alert('Profile', 'User profile will be available soon')}
+              onPress={() => router.push("/profile")}
             >
-              {/* <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={styles.avatarImage} /> */}
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatarImage}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -631,10 +768,12 @@ const FellowsModule = () => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           <View style={styles.headerSection}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.push("/education_management_hub")}
             >
@@ -644,8 +783,9 @@ const FellowsModule = () => {
 
             <Text style={styles.mainTitle}>Fellows Progress Tracking</Text>
             <Text style={styles.subtitle}>
-              Monitor cohort advancement, individual literacy goals, and milestone
-              achievements across all active educational districts near Kalgachia, Assam.
+              Monitor cohort advancement, individual literacy goals, and
+              milestone achievements across all active educational districts
+              near Kalgachia, Assam.
             </Text>
           </View>
 
@@ -673,7 +813,7 @@ const FellowsModule = () => {
                 style={styles.filterButton}
               >
                 <Text style={styles.filterButtonText}>
-                  {selectedCohort === 'All' ? 'All Cohorts' : selectedCohort}
+                  {selectedCohort === "All" ? "All Cohorts" : selectedCohort}
                 </Text>
                 <Icon name="expand-more" size={20} color="#9ca3af" />
               </TouchableOpacity>
@@ -683,49 +823,51 @@ const FellowsModule = () => {
                 style={styles.filterButton}
               >
                 <Text style={styles.filterButtonText}>
-                  {selectedDistrict === 'All' ? 'All Districts' : selectedDistrict}
+                  {selectedDistrict === "All"
+                    ? "All Districts"
+                    : selectedDistrict}
                 </Text>
                 <Icon name="expand-more" size={20} color="#9ca3af" />
               </TouchableOpacity>
 
               <View style={styles.viewToggle}>
                 <TouchableOpacity
-                  onPress={() => setViewMode('grid')}
+                  onPress={() => setViewMode("grid")}
                   style={[
                     styles.viewToggleButton,
-                    viewMode === 'grid' && styles.viewToggleButtonActive,
+                    viewMode === "grid" && styles.viewToggleButtonActive,
                   ]}
                 >
                   <Icon
                     name="grid-view"
                     size={18}
-                    color={viewMode === 'grid' ? '#0f172a' : '#64748b'}
+                    color={viewMode === "grid" ? "#0f172a" : "#64748b"}
                   />
                   <Text
                     style={[
                       styles.viewToggleText,
-                      viewMode === 'grid' && styles.viewToggleTextActive,
+                      viewMode === "grid" && styles.viewToggleTextActive,
                     ]}
                   >
                     Grid
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setViewMode('list')}
+                  onPress={() => setViewMode("list")}
                   style={[
                     styles.viewToggleButton,
-                    viewMode === 'list' && styles.viewToggleButtonActive,
+                    viewMode === "list" && styles.viewToggleButtonActive,
                   ]}
                 >
                   <Icon
                     name="view-list"
                     size={18}
-                    color={viewMode === 'list' ? '#0f172a' : '#64748b'}
+                    color={viewMode === "list" ? "#0f172a" : "#64748b"}
                   />
                   <Text
                     style={[
                       styles.viewToggleText,
-                      viewMode === 'list' && styles.viewToggleTextActive,
+                      viewMode === "list" && styles.viewToggleTextActive,
                     ]}
                   >
                     List
@@ -750,14 +892,26 @@ const FellowsModule = () => {
 
           {/* Metrics Summary Cards */}
           <View style={styles.metricsContainer}>
-            <MetricCard title="Total Active Fellows" value={fellows.length + 245} trend="12%" />
-            <MetricCard title="Avg. Cohort Progress" value="68%" subtitle="Overall Literacy" />
-            <MetricCard title="Milestones Achieved" value="1,402" trend="This Qtr" />
+            <MetricCard
+              title="Total Active Fellows"
+              value={fellows.length + 245}
+              trend="12%"
+            />
+            <MetricCard
+              title="Avg. Cohort Progress"
+              value="68%"
+              subtitle="Overall Literacy"
+            />
+            <MetricCard
+              title="Milestones Achieved"
+              value="1,402"
+              trend="This Qtr"
+            />
           </View>
 
           {/* Fellows List */}
           {filteredFellows.length > 0 ? (
-            viewMode === 'grid' ? (
+            viewMode === "grid" ? (
               <FlatList
                 data={filteredFellows}
                 renderItem={renderGridView}
@@ -775,7 +929,9 @@ const FellowsModule = () => {
             )
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No fellows match your search.</Text>
+              <Text style={styles.emptyStateText}>
+                No fellows match your search.
+              </Text>
             </View>
           )}
 
@@ -812,8 +968,13 @@ const FellowsModule = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.addModalContent}>
               <View style={styles.addModalHeader}>
-                <Text style={styles.addModalTitle}>Register New Educational Fellow</Text>
-                <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.closeButton}>
+                <Text style={styles.addModalTitle}>
+                  Register New Educational Fellow
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowAddModal(false)}
+                  style={styles.closeButton}
+                >
                   <Icon name="close" size={24} color="#64748b" />
                 </TouchableOpacity>
               </View>
@@ -856,7 +1017,9 @@ const FellowsModule = () => {
                 </View>
 
                 <View>
-                  <Text style={styles.formLabel}>Baseline Literacy Progress (%)</Text>
+                  <Text style={styles.formLabel}>
+                    Baseline Literacy Progress (%)
+                  </Text>
                   <TextInput
                     style={styles.formInput}
                     keyboardType="numeric"
@@ -872,7 +1035,10 @@ const FellowsModule = () => {
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleAddFellow} style={styles.submitButton}>
+                  <TouchableOpacity
+                    onPress={handleAddFellow}
+                    style={styles.submitButton}
+                  >
                     <Text style={styles.submitButtonText}>Register Fellow</Text>
                   </TouchableOpacity>
                 </View>
@@ -979,23 +1145,52 @@ const styles = StyleSheet.create({
     color: "#047857",
     fontWeight: "600",
   },
+  // Authentication dropdown styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   header: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: '#EDEEEF',
+    borderBottomColor: "#EDEEEF",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   menuButton: {
@@ -1003,12 +1198,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '900',
-    color: '#191C1D',
+    fontWeight: "900",
+    color: "#191C1D",
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   iconButton: {
@@ -1018,12 +1213,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#EDEEEF',
-    overflow: 'hidden',
+    backgroundColor: "#EDEEEF",
+    overflow: "hidden",
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   scrollView: {
     flex: 1,
@@ -1037,41 +1232,41 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 16,
   },
   backButtonText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    fontWeight: "bold",
+    textTransform: "uppercase",
     letterSpacing: 1,
-    color: '#64748b',
+    color: "#64748b",
   },
   mainTitle: {
     fontSize: 36,
-    fontWeight: '900',
-    color: '#0f172a',
+    fontWeight: "900",
+    color: "#0f172a",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#475569',
+    fontWeight: "500",
+    color: "#475569",
     lineHeight: 20,
   },
   searchSection: {
     marginBottom: 24,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 999,
     paddingHorizontal: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1082,23 +1277,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
     fontSize: 14,
-    color: '#0f172a',
+    color: "#0f172a",
   },
   filtersRow: {
     marginBottom: 16,
   },
   filtersContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1106,26 +1301,26 @@ const styles = StyleSheet.create({
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#1f2937',
+    color: "#1f2937",
     marginRight: 8,
   },
   viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#e5e7eb',
+    flexDirection: "row",
+    backgroundColor: "#e5e7eb",
     borderRadius: 999,
     padding: 4,
   },
   viewToggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 999,
   },
   viewToggleButtonActive: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
+    backgroundColor: "white",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1133,59 +1328,59 @@ const styles = StyleSheet.create({
   },
   viewToggleText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#64748b',
+    fontWeight: "500",
+    color: "#64748b",
   },
   viewToggleTextActive: {
-    color: '#0f172a',
+    color: "#0f172a",
   },
   addButton: {
-    backgroundColor: '#059669',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#059669",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 999,
-    shadowColor: '#059669',
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
   addButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   exportButton: {
-    backgroundColor: '#059669',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#059669",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 24,
     paddingVertical: 8,
     borderRadius: 999,
-    shadowColor: '#059669',
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
   exportButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   metricsContainer: {
     marginBottom: 24,
   },
   metricCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 24,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1193,45 +1388,45 @@ const styles = StyleSheet.create({
   },
   metricTitle: {
     fontSize: 12,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.6,
-    color: '#64748b',
-    fontWeight: '600',
+    color: "#64748b",
+    fontWeight: "600",
     marginBottom: 8,
   },
   metricValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     gap: 12,
   },
   metricValue: {
     fontSize: 36,
-    fontWeight: '900',
-    color: '#0f172a',
+    fontWeight: "900",
+    color: "#0f172a",
   },
   trendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#d1fae5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#d1fae5",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
   },
   trendText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#059669',
+    fontWeight: "500",
+    color: "#059669",
     marginLeft: 4,
   },
   metricSubtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 4,
   },
   gridCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1240,13 +1435,13 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   gridHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 24,
   },
   profileSection: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
   },
   avatar: {
@@ -1258,70 +1453,70 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#d1d5db',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#d1d5db",
+    alignItems: "center",
+    justifyContent: "center",
   },
   initialsText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4b5563',
+    fontWeight: "bold",
+    color: "#4b5563",
   },
   fellowName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f172a',
+    fontWeight: "bold",
+    color: "#0f172a",
     marginBottom: 4,
   },
   badgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   cohortBadge: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: "#d1fae5",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
   },
   cohortBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.6,
-    color: '#059669',
+    color: "#059669",
   },
   locationText: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
   },
   progressSection: {
     marginBottom: 24,
     flex: 1,
   },
   progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
     marginBottom: 8,
   },
   progressLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#0f172a',
+    fontWeight: "500",
+    color: "#0f172a",
   },
   progressPercentage: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   progressBarContainer: {
     height: 8,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
     borderRadius: 999,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 999,
   },
   milestonesSection: {
@@ -1329,15 +1524,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.6,
-    color: '#64748b',
-    fontWeight: '600',
+    color: "#64748b",
+    fontWeight: "600",
     marginBottom: 16,
   },
   milestoneItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 12,
     marginBottom: 12,
   },
@@ -1345,66 +1540,66 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 2,
   },
   milestoneText: {
     fontSize: 14,
     flex: 1,
-    color: '#64748b',
+    color: "#64748b",
   },
   milestoneTextDone: {
-    color: '#0f172a',
+    color: "#0f172a",
   },
   gridFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: "#f3f4f6",
   },
   lastUpdated: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
   },
   viewProfileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   viewProfileText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: "600",
+    color: "#059669",
   },
   listItem: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
     paddingHorizontal: 24,
     paddingVertical: 16,
   },
   listItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   listItemInfo: {
     flex: 1,
   },
   listItemName: {
-    fontWeight: '600',
-    color: '#0f172a',
+    fontWeight: "600",
+    color: "#0f172a",
     marginBottom: 4,
   },
   listItemSubtext: {
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
   },
   listItemRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   progressBadge: {
     paddingHorizontal: 12,
@@ -1414,74 +1609,74 @@ const styles = StyleSheet.create({
   },
   progressBadgeText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   lastUpdatedSmall: {
     fontSize: 12,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 8,
   },
   viewProfileLink: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: "600",
+    color: "#059669",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#0f172a',
+    fontWeight: "600",
+    color: "#0f172a",
   },
   modalList: {
     maxHeight: 400,
   },
   modalListItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: "#f3f4f6",
   },
   modalListItemText: {
-    color: '#0f172a',
+    color: "#0f172a",
   },
   addModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
     padding: 24,
     margin: 16,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   addModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   addModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0f172a',
+    fontWeight: "bold",
+    color: "#0f172a",
   },
   closeButton: {
     padding: 4,
@@ -1491,33 +1686,33 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.4,
-    color: '#64748b',
+    color: "#64748b",
     marginBottom: 4,
   },
   formInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 14,
-    color: '#0f172a',
+    color: "#0f172a",
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   picker: {
     height: 40,
   },
   formButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: 12,
     paddingTop: 16,
   },
@@ -1526,28 +1721,28 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
   },
   cancelButtonText: {
-    color: '#0f172a',
+    color: "#0f172a",
   },
   submitButton: {
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
   },
   submitButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   emptyState: {
     paddingVertical: 48,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyStateText: {
-    color: '#9ca3af',
-    textAlign: 'center',
+    color: "#9ca3af",
+    textAlign: "center",
   },
   loadMoreButton: {
     marginTop: 24,
@@ -1555,13 +1750,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    alignItems: 'center',
+    borderColor: "#d1d5db",
+    alignItems: "center",
   },
   loadMoreText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
   },
 });
 

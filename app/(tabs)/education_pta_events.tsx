@@ -1,44 +1,46 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Dimensions,
   Alert,
   Animated,
-} from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+  Dimensions,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 // Theme Colors
 const colors = {
-  primary: '#006857',
-  primaryContainer: '#00846e',
-  onPrimary: '#ffffff',
-  onPrimaryContainer: '#f4fffa',
-  primaryFixed: '#7cf8da',
-  onPrimaryFixed: '#00201a',
-  surface: '#f8f9fa',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f3f4f5',
-  surfaceContainer: '#edeeef',
-  surfaceContainerHighest: '#e1e3e4',
-  onSurface: '#191c1d',
-  onSurfaceVariant: '#3d4945',
-  outlineVariant: '#bccac4',
-  secondary: '#964900',
-  secondaryFixed: '#ffdcc6',
-  onSecondaryContainer: '#5e2c00',
-  errorContainer: '#ffdad6',
-  onErrorContainer: '#93000a',
+  primary: "#006857",
+  primaryContainer: "#00846e",
+  onPrimary: "#ffffff",
+  onPrimaryContainer: "#f4fffa",
+  primaryFixed: "#7cf8da",
+  onPrimaryFixed: "#00201a",
+  surface: "#f8f9fa",
+  surfaceContainerLowest: "#ffffff",
+  surfaceContainerLow: "#f3f4f5",
+  surfaceContainer: "#edeeef",
+  surfaceContainerHighest: "#e1e3e4",
+  onSurface: "#191c1d",
+  onSurfaceVariant: "#3d4945",
+  outlineVariant: "#bccac4",
+  secondary: "#964900",
+  secondaryFixed: "#ffdcc6",
+  onSecondaryContainer: "#5e2c00",
+  errorContainer: "#ffdad6",
+  onErrorContainer: "#93000a",
+  rose: "#ef4444",
+  emerald: "#10b981",
 };
 
 // Complete events data
@@ -49,22 +51,45 @@ const eventsData = {
     status: "Completed",
     date: "Oct 24, 2026 • 10:00 AM",
     location: "Oakridge Main Hall",
-    agenda: "This assembly focused on reviewing Q3 student outcomes, addressing infrastructure needs, and gathering parent feedback on ongoing programs.",
+    agenda:
+      "This assembly focused on reviewing Q3 student outcomes, addressing infrastructure needs, and gathering parent feedback on ongoing programs.",
     attendees: [
-      { name: "Rajesh Kumar", role: "Parent (Grade 8)", signed: "Yes", time: "10:02 AM" },
-      { name: "Aisha Rahman", role: "Fellow (Assigned)", signed: "Yes", time: "09:45 AM" },
-      { name: "Margaret Alva", role: "School Principal", signed: "Yes", time: "09:55 AM" },
-      { name: "Suresh Patil", role: "Parent (Grade 3)", signed: "No (Apology Sent)", time: "-" },
+      {
+        name: "Rajesh Kumar",
+        role: "Parent (Grade 8)",
+        signed: "Yes",
+        time: "10:02 AM",
+      },
+      {
+        name: "Aisha Rahman",
+        role: "Fellow (Assigned)",
+        signed: "Yes",
+        time: "09:45 AM",
+      },
+      {
+        name: "Margaret Alva",
+        role: "School Principal",
+        signed: "Yes",
+        time: "09:55 AM",
+      },
+      {
+        name: "Suresh Patil",
+        role: "Parent (Grade 3)",
+        signed: "No (Apology Sent)",
+        time: "-",
+      },
     ],
     communications: [
       {
         title: "Pre-Alert Sent",
-        description: "SMS invitations sent automatically to 32 parents registered in Grade 3 and Grade 4 cohorts.",
+        description:
+          "SMS invitations sent automatically to 32 parents registered in Grade 3 and Grade 4 cohorts.",
         date: "Oct 29, 2026 • 09:12 AM",
       },
       {
         title: "Follow-up reminder",
-        description: "Acknowledged by Fellow coordinator. Review booklets packed for distribution.",
+        description:
+          "Acknowledged by Fellow coordinator. Review booklets packed for distribution.",
         date: "Oct 31, 2026 • 15:45 PM",
       },
     ],
@@ -75,18 +100,45 @@ const eventsData = {
     status: "Scheduled",
     date: "Nov 12, 2026 • 11:30 AM",
     location: "Riverside Classroom B",
-    agenda: "This assembly is scheduled to establish critical linkages between newly onboarded educational fellows and parent representatives. We will review attendance goals, distribute learning block materials, and define community feedback paths.",
+    agenda:
+      "This assembly is scheduled to establish critical linkages between newly onboarded educational fellows and parent representatives. We will review attendance goals, distribute learning block materials, and define community feedback paths.",
     attendees: [
-      { name: "Rajesh Kumar", role: "Parent (Grade 8)", signed: "Pending", time: "-" },
-      { name: "Aisha Rahman", role: "Fellow (Assigned)", signed: "Confirmed", time: "-" },
-      { name: "Margaret Alva", role: "School Principal", signed: "Confirmed", time: "-" },
-      { name: "Suresh Patil", role: "Parent (Grade 3)", signed: "Pending", time: "-" },
-      { name: "Neha Sharma", role: "Parent (Grade 5)", signed: "Confirmed", time: "-" },
+      {
+        name: "Rajesh Kumar",
+        role: "Parent (Grade 8)",
+        signed: "Pending",
+        time: "-",
+      },
+      {
+        name: "Aisha Rahman",
+        role: "Fellow (Assigned)",
+        signed: "Confirmed",
+        time: "-",
+      },
+      {
+        name: "Margaret Alva",
+        role: "School Principal",
+        signed: "Confirmed",
+        time: "-",
+      },
+      {
+        name: "Suresh Patil",
+        role: "Parent (Grade 3)",
+        signed: "Pending",
+        time: "-",
+      },
+      {
+        name: "Neha Sharma",
+        role: "Parent (Grade 5)",
+        signed: "Confirmed",
+        time: "-",
+      },
     ],
     communications: [
       {
         title: "Invitation Sent",
-        description: "Email invitations sent to all parents of Grade 3-8 students.",
+        description:
+          "Email invitations sent to all parents of Grade 3-8 students.",
         date: "Nov 5, 2026 • 10:00 AM",
       },
       {
@@ -102,11 +154,27 @@ const eventsData = {
     status: "Scheduled",
     date: "Jun 10, 2026 • 09:30 AM",
     location: "Kalgachia Circle Office",
-    agenda: "Planning meeting for summer camp activities and setting baseline literacy goals for the upcoming term.",
+    agenda:
+      "Planning meeting for summer camp activities and setting baseline literacy goals for the upcoming term.",
     attendees: [
-      { name: "Aisha Rahman", role: "Fellow Lead", signed: "Confirmed", time: "-" },
-      { name: "Rajesh Kumar", role: "PTA President", signed: "Confirmed", time: "-" },
-      { name: "Margaret Alva", role: "School Principal", signed: "Confirmed", time: "-" },
+      {
+        name: "Aisha Rahman",
+        role: "Fellow Lead",
+        signed: "Confirmed",
+        time: "-",
+      },
+      {
+        name: "Rajesh Kumar",
+        role: "PTA President",
+        signed: "Confirmed",
+        time: "-",
+      },
+      {
+        name: "Margaret Alva",
+        role: "School Principal",
+        signed: "Confirmed",
+        time: "-",
+      },
     ],
     communications: [
       {
@@ -122,11 +190,27 @@ const eventsData = {
     status: "Scheduled",
     date: "Jun 24, 2026 • 02:00 PM",
     location: "Bartari Village Common",
-    agenda: "Launch event for the new outdoor reading circle initiative aimed at improving literacy among primary students.",
+    agenda:
+      "Launch event for the new outdoor reading circle initiative aimed at improving literacy among primary students.",
     attendees: [
-      { name: "Aisha Rahman", role: "Program Coordinator", signed: "Confirmed", time: "-" },
-      { name: "Local Village Head", role: "Community Leader", signed: "Pending", time: "-" },
-      { name: "Primary Teachers", role: "Teaching Staff", signed: "Confirmed", time: "-" },
+      {
+        name: "Aisha Rahman",
+        role: "Program Coordinator",
+        signed: "Confirmed",
+        time: "-",
+      },
+      {
+        name: "Local Village Head",
+        role: "Community Leader",
+        signed: "Pending",
+        time: "-",
+      },
+      {
+        name: "Primary Teachers",
+        role: "Teaching Staff",
+        signed: "Confirmed",
+        time: "-",
+      },
     ],
     communications: [
       {
@@ -140,15 +224,17 @@ const eventsData = {
 
 export default function PtaEventDetail() {
   const params = useLocalSearchParams();
-  const eventId = params.id as string || "102";
-  
+  const eventId = (params.id as string) || "102";
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
-  
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
 
   // Get event data based on ID
   const event = eventsData[parseInt(eventId)] || eventsData[102];
@@ -190,9 +276,34 @@ export default function PtaEventDetail() {
     setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
   };
 
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
   const handleNavigation = (route: string) => {
     toggleMenu();
     router.push(route);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert("Success", "Logged out successfully");
+          router.replace("/login");
+        },
+      },
+    ]);
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -205,6 +316,11 @@ export default function PtaEventDetail() {
     outputRange: ["0deg", "180deg"],
   });
 
+  const rotateAuth = authRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
   const AttendeeRow = ({ attendee }: { attendee: any }) => (
     <View style={styles.attendeeRow}>
       <View style={styles.attendeeInfo}>
@@ -212,19 +328,33 @@ export default function PtaEventDetail() {
         <Text style={styles.attendeeRole}>{attendee.role}</Text>
       </View>
       <View style={styles.attendeeStatus}>
-        <View style={[
-          styles.signedBadge,
-          attendee.signed === "Yes" || attendee.signed === "Confirmed" ? styles.signedYes : 
-          attendee.signed === "No (Apology Sent)" ? styles.signedNo : styles.signedPending
-        ]}>
-          <Text style={[
-            styles.signedText,
-            attendee.signed === "Yes" || attendee.signed === "Confirmed" ? styles.signedTextYes : 
-            attendee.signed === "No (Apology Sent)" ? styles.signedTextNo : styles.signedTextPending
-          ]}>
-            {attendee.signed === "Yes" ? "Signed In" : 
-             attendee.signed === "Confirmed" ? "Confirmed" :
-             attendee.signed === "No (Apology Sent)" ? "Not Signed" : "Pending"}
+        <View
+          style={[
+            styles.signedBadge,
+            attendee.signed === "Yes" || attendee.signed === "Confirmed"
+              ? styles.signedYes
+              : attendee.signed === "No (Apology Sent)"
+                ? styles.signedNo
+                : styles.signedPending,
+          ]}
+        >
+          <Text
+            style={[
+              styles.signedText,
+              attendee.signed === "Yes" || attendee.signed === "Confirmed"
+                ? styles.signedTextYes
+                : attendee.signed === "No (Apology Sent)"
+                  ? styles.signedTextNo
+                  : styles.signedTextPending,
+            ]}
+          >
+            {attendee.signed === "Yes"
+              ? "Signed In"
+              : attendee.signed === "Confirmed"
+                ? "Confirmed"
+                : attendee.signed === "No (Apology Sent)"
+                  ? "Not Signed"
+                  : "Pending"}
           </Text>
         </View>
         <Text style={styles.attendeeTime}>{attendee.time}</Text>
@@ -268,14 +398,20 @@ export default function PtaEventDetail() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/")}
+        >
           <Ionicons name="grid-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Dashboard</Text>
         </TouchableOpacity>
 
         {/* EDUCATION WITH DROPDOWN */}
         <View>
-          <TouchableOpacity style={styles.menuItemWithDropdown} onPress={toggleEducationDropdown}>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleEducationDropdown}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="school-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Education</Text>
@@ -287,25 +423,46 @@ export default function PtaEventDetail() {
 
           {educationDropdownOpen && (
             <View style={styles.dropdownContainer}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_management_hub')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_management_hub")}
+              >
                 <Ionicons name="library-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_schools_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_schools_module")}
+              >
                 <Ionicons name="business-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Schools Overview</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_fellows_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_fellows_module")}
+              >
                 <Ionicons name="people-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Fellows Directory</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_students_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_students_module")}
+              >
                 <Ionicons name="calendar-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Students Directory</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemActive]} onPress={() => handleNavigation('/education_pta_programs')}>
-                <Ionicons name="people-circle-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>PTA & Programs</Text>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemActive]}
+                onPress={() => handleNavigation("/education_pta_programs")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#047857"
+                />
+                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
+                  PTA & Programs
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -313,52 +470,155 @@ export default function PtaEventDetail() {
 
         {/* LIVELIHOOD WITH DROPDOWN */}
         <View>
-          <TouchableOpacity style={styles.menuItemWithDropdown} onPress={toggleLivelihoodDropdown}>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleLivelihoodDropdown}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Livelihood</Text>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateLivelihood }] }}>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Animated.View>
           </TouchableOpacity>
 
           {livelihoodDropdownOpen && (
             <View style={styles.dropdownContainer}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_management_hub')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_management_hub")}
+              >
                 <Ionicons name="apps-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_goat_rearing_1')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
+              >
                 <Ionicons name="paw-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Goat Rearing</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_sugarcane_cultivation')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() =>
+                  handleNavigation("/livelihood_sugarcane_cultivation")
+                }
+              >
                 <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Agriculture Support</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/beneficiary_master_profile')}>
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/beneficiary_master_profile")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Beneficiaries</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/disaster_relief_management')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/disaster_relief_management")}
+        >
           <Ionicons name="snow-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Disaster Relief</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/hr_employee_management')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/hr_employee_management")}
+        >
           <Ionicons name="people-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>HR Management</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/admin_access_control')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/admin_access_control")}
+        >
           <Ionicons name="document-text-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Admin & Access</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            toggleMenu();
+            router.push("/profile");
+          }}
+        >
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
+        </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/register");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={colors.rose}
+                />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN CONTENT */}
@@ -374,13 +634,34 @@ export default function PtaEventDetail() {
             <Text style={styles.headerTitle}>Impact Portal</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('Notifications', 'No new notifications')}>
-              <Ionicons name="notifications-outline" size={22} color="#6B7280" />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#6B7280"
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('Settings', 'Settings will be available soon')}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
+            >
               <Ionicons name="settings-outline" size={22} color="#6B7280" />
             </TouchableOpacity>
-            <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={styles.avatar} />
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -389,31 +670,52 @@ export default function PtaEventDetail() {
           contentContainerStyle={styles.scrollContent}
         >
           {/* Back Link */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/education_pta_programs")}>
-  <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
-  <Text style={styles.backText}>Back to PTA Hub</Text>
-</TouchableOpacity>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.push("/education_pta_programs")}
+          >
+            <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
+            <Text style={styles.backText}>Back to PTA Hub</Text>
+          </TouchableOpacity>
+
           {/* Hero Header */}
           <LinearGradient
-            colors={['#FFFFFF', '#FFFFFF']}
+            colors={["#FFFFFF", "#FFFFFF"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCard}
           >
             <View style={styles.heroContent}>
               <View style={styles.heroIcon}>
-                <MaterialIcons name="diversity-3" size={32} color={colors.onSecondaryContainer} />
+                <MaterialIcons
+                  name="diversity-3"
+                  size={32}
+                  color={colors.onSecondaryContainer}
+                />
               </View>
               <View style={styles.heroInfo}>
                 <View style={styles.titleRow}>
                   <Text style={styles.heroTitle}>{event.title}</Text>
-                  <View style={[styles.statusBadge, event.status === 'Scheduled' ? styles.statusScheduled : styles.statusCompleted]}>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      event.status === "Scheduled"
+                        ? styles.statusScheduled
+                        : styles.statusCompleted,
+                    ]}
+                  >
                     <Text style={styles.statusText}>{event.status}</Text>
                   </View>
                 </View>
                 <View style={styles.dateRow}>
-                  <MaterialIcons name="calendar-today" size={16} color={colors.primary} />
-                  <Text style={styles.dateText}>{event.date} at {event.location}</Text>
+                  <MaterialIcons
+                    name="calendar-today"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.dateText}>
+                    {event.date} at {event.location}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -432,8 +734,14 @@ export default function PtaEventDetail() {
               {/* Attendee Sign Ins */}
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <MaterialIcons name="how-to-reg" size={20} color={colors.primary} />
-                  <Text style={styles.cardTitle}>PTA Attendee Registry & Sign-ins</Text>
+                  <MaterialIcons
+                    name="how-to-reg"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.cardTitle}>
+                    PTA Attendee Registry & Sign-ins
+                  </Text>
                 </View>
                 <View style={styles.attendeeHeader}>
                   <Text style={styles.attendeeHeaderName}>Name</Text>
@@ -449,7 +757,9 @@ export default function PtaEventDetail() {
             <View style={styles.rightColumn}>
               {/* Communication Logs */}
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>Action & Communication Logs</Text>
+                <Text style={styles.cardTitle}>
+                  Action & Communication Logs
+                </Text>
                 {event.communications.map((log, idx) => (
                   <CommunicationCard key={idx} log={log} />
                 ))}
@@ -546,6 +856,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8f5e9",
     borderRadius: 8,
   },
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
   dropdownText: {
     fontSize: 13,
     color: "#6b7280",
@@ -554,6 +870,29 @@ const styles = StyleSheet.create({
   dropdownTextActive: {
     color: "#047857",
     fontWeight: "600",
+  },
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
+  // Authentication divider styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   // Main Container
@@ -564,18 +903,18 @@ const styles = StyleSheet.create({
 
   // Header Styles
   header: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: "rgba(255,255,255,0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: '#EDEEEF',
+    borderBottomColor: "#EDEEEF",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   menuButton: {
@@ -583,12 +922,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   iconButton: {
@@ -608,16 +947,16 @@ const styles = StyleSheet.create({
 
   // Back Button
   backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 16,
   },
   backText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    color: '#64748b',
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    color: "#64748b",
   },
 
   // Hero Card
@@ -626,14 +965,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   heroContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
   },
   heroIcon: {
@@ -641,22 +980,22 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: colors.secondaryFixed,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   heroInfo: {
     flex: 1,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
     marginBottom: 8,
   },
   heroTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.onSurface,
     flex: 1,
   },
@@ -673,13 +1012,13 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     color: colors.onPrimaryFixed,
   },
   dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   dateText: {
@@ -689,8 +1028,8 @@ const styles = StyleSheet.create({
 
   // Two Column Layout
   twoColumnLayout: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 16,
   },
   leftColumn: {
@@ -708,21 +1047,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 16,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
     marginBottom: 12,
   },
@@ -734,8 +1073,8 @@ const styles = StyleSheet.create({
 
   // Attendee Styles
   attendeeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.outlineVariant,
@@ -743,20 +1082,20 @@ const styles = StyleSheet.create({
   },
   attendeeHeaderName: {
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     color: colors.onSurfaceVariant,
   },
   attendeeHeaderStatus: {
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     color: colors.onSurfaceVariant,
   },
   attendeeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.outlineVariant,
@@ -766,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   attendeeName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
     marginBottom: 2,
   },
@@ -776,7 +1115,7 @@ const styles = StyleSheet.create({
   },
   attendeeStatus: {
     flex: 1,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     gap: 4,
   },
   signedBadge: {
@@ -795,8 +1134,8 @@ const styles = StyleSheet.create({
   },
   signedText: {
     fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   signedTextYes: {
     color: colors.onPrimaryFixed,
@@ -821,7 +1160,7 @@ const styles = StyleSheet.create({
   },
   communicationTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
     marginBottom: 4,
   },

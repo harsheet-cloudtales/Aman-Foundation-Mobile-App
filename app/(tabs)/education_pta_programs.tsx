@@ -1,49 +1,51 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  View,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Modal,
-  Alert,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  RefreshControl,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
+  View,
+} from "react-native";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 // Theme Colors
 const colors = {
-  primary: '#006857',
-  primaryContainer: '#00846e',
-  onPrimary: '#ffffff',
-  onPrimaryContainer: '#f4fffa',
-  primaryFixed: '#7cf8da',
-  onPrimaryFixed: '#00201a',
-  surface: '#f8f9fa',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f3f4f5',
-  surfaceContainer: '#edeeef',
-  surfaceContainerHighest: '#e1e3e4',
-  onSurface: '#191c1d',
-  onSurfaceVariant: '#3d4945',
-  outlineVariant: '#bccac4',
-  secondary: '#964900',
-  secondaryContainer: '#fc820c',
-  secondaryFixed: '#ffdcc6',
-  onSecondaryContainer: '#5e2c00',
-  error: '#ba1a1a',
-  errorContainer: '#ffdad6',
+  primary: "#006857",
+  primaryContainer: "#00846e",
+  onPrimary: "#ffffff",
+  onPrimaryContainer: "#f4fffa",
+  primaryFixed: "#7cf8da",
+  onPrimaryFixed: "#00201a",
+  surface: "#f8f9fa",
+  surfaceContainerLowest: "#ffffff",
+  surfaceContainerLow: "#f3f4f5",
+  surfaceContainer: "#edeeef",
+  surfaceContainerHighest: "#e1e3e4",
+  onSurface: "#191c1d",
+  onSurfaceVariant: "#3d4945",
+  outlineVariant: "#bccac4",
+  secondary: "#964900",
+  secondaryContainer: "#fc820c",
+  secondaryFixed: "#ffdcc6",
+  onSecondaryContainer: "#5e2c00",
+  error: "#ba1a1a",
+  errorContainer: "#ffdad6",
+  rose: "#ef4444",
+  emerald: "#10b981",
 };
 
 // Initial Data
@@ -52,7 +54,8 @@ const initialPrograms = [
     id: 1,
     title: "Annual Literacy Drive",
     status: "Active",
-    description: "Comprehensive reading initiative targeting Standard 3 students.",
+    description:
+      "Comprehensive reading initiative targeting Standard 3 students.",
     duration: "6 Months",
     participants: "450 Students Enrolled",
   },
@@ -60,7 +63,8 @@ const initialPrograms = [
     id: 2,
     title: "Digital Literacy Course",
     status: "Planning",
-    description: "Basic computing classes for standard 8 students in partner schools.",
+    description:
+      "Basic computing classes for standard 8 students in partner schools.",
     duration: "3 Months",
     participants: "Planning (120 Expected)",
   },
@@ -71,7 +75,8 @@ const initialEvents = [
     id: 101,
     title: "Q3 PTA General Assembly",
     status: "Completed",
-    description: "Review of student outcomes, infrastructure needs, and parent feedback.",
+    description:
+      "Review of student outcomes, infrastructure needs, and parent feedback.",
     date: "Oct 24, 2026 • 10:00 AM",
     location: "Oakridge Main Hall",
   },
@@ -79,7 +84,8 @@ const initialEvents = [
     id: 102,
     title: "Fellow-Parent Welcome Committee",
     status: "Scheduled",
-    description: "Orientation session welcoming Cohort '24 fellows to the district.",
+    description:
+      "Orientation session welcoming Cohort '24 fellows to the district.",
     date: "Nov 12, 2026 • 11:30 AM",
     location: "Riverside Classroom B",
   },
@@ -87,7 +93,8 @@ const initialEvents = [
     id: 103,
     title: "PTA Monthly Planning Meeting",
     status: "Scheduled",
-    description: "Discussing summer camp preparations and baseline literacy goals.",
+    description:
+      "Discussing summer camp preparations and baseline literacy goals.",
     date: "Jun 10, 2026 • 09:30 AM",
     location: "Kalgachia Circle Office",
   },
@@ -95,7 +102,8 @@ const initialEvents = [
     id: 104,
     title: "Community Reading Circle Launch",
     status: "Scheduled",
-    description: "Launching the outdoor reading circle initiative for primary students.",
+    description:
+      "Launching the outdoor reading circle initiative for primary students.",
     date: "Jun 24, 2026 • 02:00 PM",
     location: "Bartari Village Common",
   },
@@ -109,15 +117,17 @@ export default function PtaPrograms() {
   const [refreshing, setRefreshing] = useState(false);
   const [programs, setPrograms] = useState(initialPrograms);
   const [events, setEvents] = useState(initialEvents);
-  
+
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
-  
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+
   // Animated values
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
 
   // Calendar states
   const [currentDate, setCurrentDate] = useState(new Date(2026, 5, 3));
@@ -128,15 +138,25 @@ export default function PtaPrograms() {
   const [tempEventTime, setTempEventTime] = useState(new Date());
 
   // Form states
-  const [newName, setNewName] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newDate, setNewDate] = useState('');
-  const [newLoc, setNewLoc] = useState('');
-  const [newPriority, setNewPriority] = useState('Active');
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newDate, setNewDate] = useState("");
+  const [newLoc, setNewLoc] = useState("");
+  const [newPriority, setNewPriority] = useState("Active");
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const toggleMenu = () => {
@@ -176,9 +196,34 @@ export default function PtaPrograms() {
     setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
   };
 
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
   const handleNavigation = (route: string) => {
     toggleMenu();
     router.push(route);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert("Success", "Logged out successfully");
+          router.replace("/login");
+        },
+      },
+    ]);
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -187,6 +232,11 @@ export default function PtaPrograms() {
   });
 
   const rotateLivelihood = livelihoodRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const rotateAuth = authRotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "180deg"],
   });
@@ -273,20 +323,33 @@ export default function PtaPrograms() {
   };
 
   const formatEventDate = (date: Date, time: Date) => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     const monthName = months[date.getMonth()];
     const day = date.getDate();
     const yr = date.getFullYear();
     let hours = time.getHours();
     const minutes = time.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12;
     hours = hours ? hours : 12;
-    const timeStr = `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    const timeStr = `${hours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
     return `${monthName} ${day}, ${yr} • ${timeStr}`;
   };
 
-  const displayedEvents = selectedCell 
+  const displayedEvents = selectedCell
     ? getEventsForDay(selectedCell)
     : events.filter((e) => {
         const d = parseEventDate(e.date);
@@ -296,7 +359,7 @@ export default function PtaPrograms() {
 
   const handleAddSubmit = () => {
     if (!newName || !newDesc) {
-      Alert.alert('Error', 'Please fill all required fields');
+      Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
@@ -310,7 +373,7 @@ export default function PtaPrograms() {
         participants: newLoc || "0 Enrolled",
       };
       setPrograms([...programs, newProg]);
-      Alert.alert('Success', 'Program launched successfully');
+      Alert.alert("Success", "Program launched successfully");
     } else {
       const formattedDate = formatEventDate(tempEventDate, tempEventTime);
       const newEvent = {
@@ -322,15 +385,15 @@ export default function PtaPrograms() {
         location: newLoc || "TBD",
       };
       setEvents([...events, newEvent]);
-      Alert.alert('Success', 'Event scheduled successfully');
+      Alert.alert("Success", "Event scheduled successfully");
     }
 
     // Reset form
-    setNewName('');
-    setNewDesc('');
-    setNewDate('');
-    setNewLoc('');
-    setNewPriority('Active');
+    setNewName("");
+    setNewDesc("");
+    setNewDate("");
+    setNewLoc("");
+    setNewPriority("Active");
     setTempEventDate(new Date());
     setTempEventTime(new Date());
     setShowAddModal(false);
@@ -344,49 +407,59 @@ export default function PtaPrograms() {
     </View>
   );
 
-  
-  // UPDATED: ProgramCard with correct navigation
-const ProgramCard = ({ program }: any) => (
-  <TouchableOpacity
-    style={styles.programCard}
-    onPress={() => {
-      console.log("Navigating to program detail with id:", program.id);
-      router.push({
-        pathname: "/education_pta_program_detail",
-        params: { id: program.id.toString() }
-      });
-    }}
-  >
-    <View style={styles.programHeader}>
-      <View style={styles.programInfo}>
-        <Text style={styles.programTitle}>{program.title}</Text>
-        <Text style={styles.programDescription}>{program.description}</Text>
+  const ProgramCard = ({ program }: any) => (
+    <TouchableOpacity
+      style={styles.programCard}
+      onPress={() => {
+        router.push({
+          pathname: "/education_pta_program_detail",
+          params: { id: program.id.toString() },
+        });
+      }}
+    >
+      <View style={styles.programHeader}>
+        <View style={styles.programInfo}>
+          <Text style={styles.programTitle}>{program.title}</Text>
+          <Text style={styles.programDescription}>{program.description}</Text>
+        </View>
+        <View
+          style={[
+            styles.programStatus,
+            program.status === "Active"
+              ? styles.statusActive
+              : styles.statusPlanning,
+          ]}
+        >
+          <Text style={styles.programStatusText}>{program.status}</Text>
+        </View>
       </View>
-      <View style={[styles.programStatus, program.status === 'Active' ? styles.statusActive : styles.statusPlanning]}>
-        <Text style={styles.programStatusText}>{program.status}</Text>
+      <View style={styles.programFooter}>
+        <Text style={styles.programDuration}>Duration: {program.duration}</Text>
+        <Text style={styles.programParticipants}>{program.participants}</Text>
       </View>
-    </View>
-    <View style={styles.programFooter}>
-      <Text style={styles.programDuration}>Duration: {program.duration}</Text>
-      <Text style={styles.programParticipants}>{program.participants}</Text>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
 
-  //  EventCard with navigation to event detail page
   const EventCard = ({ event }: any) => (
     <TouchableOpacity
       style={styles.eventCard}
       onPress={() => {
         router.push({
           pathname: "/education_pta_events",
-          params: { id: event.id.toString() }
+          params: { id: event.id.toString() },
         });
       }}
     >
       <View style={styles.eventHeader}>
         <Text style={styles.eventTitle}>{event.title}</Text>
-        <View style={[styles.eventStatus, event.status === 'Scheduled' ? styles.statusScheduled : styles.statusCompleted]}>
+        <View
+          style={[
+            styles.eventStatus,
+            event.status === "Scheduled"
+              ? styles.statusScheduled
+              : styles.statusCompleted,
+          ]}
+        >
           <Text style={styles.eventStatusText}>{event.status}</Text>
         </View>
       </View>
@@ -426,14 +499,20 @@ const ProgramCard = ({ program }: any) => (
           </View>
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/")}
+        >
           <Ionicons name="grid-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Dashboard</Text>
         </TouchableOpacity>
 
         {/* EDUCATION WITH DROPDOWN */}
         <View>
-          <TouchableOpacity style={styles.menuItemWithDropdown} onPress={toggleEducationDropdown}>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleEducationDropdown}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="school-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Education</Text>
@@ -445,25 +524,46 @@ const ProgramCard = ({ program }: any) => (
 
           {educationDropdownOpen && (
             <View style={styles.dropdownContainer}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_management_hub')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_management_hub")}
+              >
                 <Ionicons name="library-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_schools_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_schools_module")}
+              >
                 <Ionicons name="business-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Schools Overview</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_fellows_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_fellows_module")}
+              >
                 <Ionicons name="people-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Fellows Directory</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_students_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_students_module")}
+              >
                 <Ionicons name="calendar-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Students Directory</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemActive]} onPress={() => handleNavigation('/education_pta_programs')}>
-                <Ionicons name="people-circle-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>PTA & Programs</Text>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemActive]}
+                onPress={() => handleNavigation("/education_pta_programs")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#047857"
+                />
+                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
+                  PTA & Programs
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -471,52 +571,155 @@ const ProgramCard = ({ program }: any) => (
 
         {/* LIVELIHOOD WITH DROPDOWN */}
         <View>
-          <TouchableOpacity style={styles.menuItemWithDropdown} onPress={toggleLivelihoodDropdown}>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleLivelihoodDropdown}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Livelihood</Text>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateLivelihood }] }}>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Animated.View>
           </TouchableOpacity>
 
           {livelihoodDropdownOpen && (
             <View style={styles.dropdownContainer}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_management_hub')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_management_hub")}
+              >
                 <Ionicons name="apps-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_goat_rearing_1')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
+              >
                 <Ionicons name="paw-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Goat Rearing</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_sugarcane_cultivation')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() =>
+                  handleNavigation("/livelihood_sugarcane_cultivation")
+                }
+              >
                 <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Agriculture Support</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/beneficiary_master_profile')}>
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/beneficiary_master_profile")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Beneficiaries</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/disaster_relief_management')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/disaster_relief_management")}
+        >
           <Ionicons name="snow-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Disaster Relief</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/hr_employee_management')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/hr_employee_management")}
+        >
           <Ionicons name="people-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>HR Management</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/admin_access_control')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/admin_access_control")}
+        >
           <Ionicons name="document-text-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Admin & Access</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            toggleMenu();
+            router.push("/profile");
+          }}
+        >
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
+        </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/register");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={colors.rose}
+                />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN CONTENT */}
@@ -532,23 +735,53 @@ const ProgramCard = ({ program }: any) => (
             <Text style={styles.headerTitle}>Impact Portal</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('Notifications', 'No new notifications')}>
-              <Ionicons name="notifications-outline" size={22} color="#6B7280" />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#6B7280"
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('Settings', 'Settings will be available soon')}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
+            >
               <Ionicons name="settings-outline" size={22} color="#6B7280" />
             </TouchableOpacity>
-            <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={styles.avatar} />
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+            />
+          }
         >
           {/* Back Button */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/education_management_hub")}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.push("/education_management_hub")}
+          >
             <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
             <Text style={styles.backText}>Back to Education Hub</Text>
           </TouchableOpacity>
@@ -568,7 +801,11 @@ const ProgramCard = ({ program }: any) => (
                 setShowAddModal(true);
               }}
             >
-              <MaterialIcons name="calendar-month" size={18} color={colors.onSurface} />
+              <MaterialIcons
+                name="calendar-month"
+                size={18}
+                color={colors.onSurface}
+              />
               <Text style={styles.scheduleButtonText}>Schedule Meeting</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -585,9 +822,21 @@ const ProgramCard = ({ program }: any) => (
 
           {/* Statistics Cards */}
           <View style={styles.statsContainer}>
-            <StatCard title="Running Programs" value={`${programs.length} Active`} subtitle="Continuous impact assessment" />
-            <StatCard title="Meetings Held (YTD)" value={`${events.filter(e => e.status === "Completed").length + 24}`} subtitle="Parent-Teacher linkages complete" />
-            <StatCard title="Communication Follow-ups" value="4 Pending" subtitle="Requires organizer action" />
+            <StatCard
+              title="Running Programs"
+              value={`${programs.length} Active`}
+              subtitle="Continuous impact assessment"
+            />
+            <StatCard
+              title="Meetings Held (YTD)"
+              value={`${events.filter((e) => e.status === "Completed").length + 24}`}
+              subtitle="Parent-Teacher linkages complete"
+            />
+            <StatCard
+              title="Communication Follow-ups"
+              value="4 Pending"
+              subtitle="Requires organizer action"
+            />
           </View>
 
           {/* Two Column Layout */}
@@ -596,7 +845,11 @@ const ProgramCard = ({ program }: any) => (
             <View style={styles.leftColumn}>
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <MaterialIcons name="workspace-premium" size={24} color={colors.primary} />
+                  <MaterialIcons
+                    name="workspace-premium"
+                    size={24}
+                    color={colors.primary}
+                  />
                   <Text style={styles.sectionTitle}>Long-Running Programs</Text>
                 </View>
                 {programs.map((program) => (
@@ -609,8 +862,14 @@ const ProgramCard = ({ program }: any) => (
             <View style={styles.rightColumn}>
               <View style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                  <MaterialIcons name="calendar-month" size={24} color={colors.secondary} />
-                  <Text style={styles.sectionTitle}>Events & Meetings Calendar</Text>
+                  <MaterialIcons
+                    name="calendar-month"
+                    size={24}
+                    color={colors.secondary}
+                  />
+                  <Text style={styles.sectionTitle}>
+                    Events & Meetings Calendar
+                  </Text>
                 </View>
 
                 {/* Calendar Header */}
@@ -619,11 +878,25 @@ const ProgramCard = ({ program }: any) => (
                     {monthNames[month]} {year}
                   </Text>
                   <View style={styles.calendarNav}>
-                    <TouchableOpacity onPress={handlePrevMonth} style={styles.calendarNavButton}>
-                      <MaterialIcons name="chevron-left" size={20} color={colors.onSurface} />
+                    <TouchableOpacity
+                      onPress={handlePrevMonth}
+                      style={styles.calendarNavButton}
+                    >
+                      <MaterialIcons
+                        name="chevron-left"
+                        size={20}
+                        color={colors.onSurface}
+                      />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleNextMonth} style={styles.calendarNavButton}>
-                      <MaterialIcons name="chevron-right" size={20} color={colors.onSurface} />
+                    <TouchableOpacity
+                      onPress={handleNextMonth}
+                      style={styles.calendarNavButton}
+                    >
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={20}
+                        color={colors.onSurface}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -631,7 +904,9 @@ const ProgramCard = ({ program }: any) => (
                 {/* Weekday Labels */}
                 <View style={styles.weekdayContainer}>
                   {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                    <Text key={day} style={styles.weekdayText}>{day}</Text>
+                    <Text key={day} style={styles.weekdayText}>
+                      {day}
+                    </Text>
                   ))}
                 </View>
 
@@ -639,10 +914,12 @@ const ProgramCard = ({ program }: any) => (
                 <View style={styles.calendarGrid}>
                   {calendarCells.map((cell, idx) => {
                     const dayEvents = getEventsForDay(cell);
-                    const isToday = cell.day === 3 && cell.month === 5 && cell.year === 2026;
-                    const isSelected = selectedCell && 
-                      selectedCell.day === cell.day && 
-                      selectedCell.month === cell.month && 
+                    const isToday =
+                      cell.day === 3 && cell.month === 5 && cell.year === 2026;
+                    const isSelected =
+                      selectedCell &&
+                      selectedCell.day === cell.day &&
+                      selectedCell.month === cell.month &&
                       selectedCell.year === cell.year;
 
                     return (
@@ -662,15 +939,23 @@ const ProgramCard = ({ program }: any) => (
                           }
                         }}
                       >
-                        <Text style={[
-                          styles.calendarCellText,
-                          !cell.isCurrentMonth && styles.calendarCellTextOther,
-                          isSelected && styles.calendarCellTextSelected,
-                        ]}>
+                        <Text
+                          style={[
+                            styles.calendarCellText,
+                            !cell.isCurrentMonth &&
+                              styles.calendarCellTextOther,
+                            isSelected && styles.calendarCellTextSelected,
+                          ]}
+                        >
                           {cell.day}
                         </Text>
                         {dayEvents.length > 0 && (
-                          <View style={[styles.calendarDot, isSelected && styles.calendarDotSelected]} />
+                          <View
+                            style={[
+                              styles.calendarDot,
+                              isSelected && styles.calendarDotSelected,
+                            ]}
+                          />
                         )}
                       </TouchableOpacity>
                     );
@@ -681,8 +966,8 @@ const ProgramCard = ({ program }: any) => (
                 <View style={styles.eventsContainer}>
                   <View style={styles.eventsHeader}>
                     <Text style={styles.eventsTitle}>
-                      {selectedCell 
-                        ? `Events on ${monthNames[selectedCell.month]} ${selectedCell.day}, ${selectedCell.year}` 
+                      {selectedCell
+                        ? `Events on ${monthNames[selectedCell.month]} ${selectedCell.day}, ${selectedCell.year}`
                         : `Events in ${monthNames[month]} ${year}`}
                     </Text>
                     {selectedCell && (
@@ -696,7 +981,9 @@ const ProgramCard = ({ program }: any) => (
                     <EventCard key={event.id} event={event} />
                   ))}
                   {displayedEvents.length === 0 && (
-                    <Text style={styles.noEventsText}>No events scheduled for this period.</Text>
+                    <Text style={styles.noEventsText}>
+                      No events scheduled for this period.
+                    </Text>
                   )}
                 </View>
               </View>
@@ -749,7 +1036,9 @@ const ProgramCard = ({ program }: any) => (
 
               {modalType === "Program" ? (
                 <View>
-                  <Text style={styles.formLabel}>Planned Duration (e.g. 6 Months)</Text>
+                  <Text style={styles.formLabel}>
+                    Planned Duration (e.g. 6 Months)
+                  </Text>
                   <TextInput
                     style={styles.formInput}
                     placeholder="e.g. 4 Months"
@@ -765,9 +1054,14 @@ const ProgramCard = ({ program }: any) => (
                     style={styles.datePickerButton}
                     onPress={() => setShowDatePicker(true)}
                   >
-                    <MaterialIcons name="event" size={20} color={colors.primary} />
+                    <MaterialIcons
+                      name="event"
+                      size={20}
+                      color={colors.primary}
+                    />
                     <Text style={styles.datePickerText}>
-                      {tempEventDate.toDateString()} at {tempEventTime.toLocaleTimeString()}
+                      {tempEventDate.toDateString()} at{" "}
+                      {tempEventTime.toLocaleTimeString()}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -775,7 +1069,9 @@ const ProgramCard = ({ program }: any) => (
 
               <View>
                 <Text style={styles.formLabel}>
-                  {modalType === "Program" ? "Expected Participants (e.g. 150 Enrolled)" : "Location / Venue"}
+                  {modalType === "Program"
+                    ? "Expected Participants (e.g. 150 Enrolled)"
+                    : "Location / Venue"}
                 </Text>
                 <TextInput
                   style={styles.formInput}
@@ -793,7 +1089,10 @@ const ProgramCard = ({ program }: any) => (
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleAddSubmit} style={styles.submitButton}>
+                <TouchableOpacity
+                  onPress={handleAddSubmit}
+                  style={styles.submitButton}
+                >
                   <Text style={styles.submitButtonText}>Launch Now</Text>
                 </TouchableOpacity>
               </View>
@@ -922,6 +1221,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8f5e9",
     borderRadius: 8,
   },
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
   dropdownText: {
     fontSize: 13,
     color: "#6b7280",
@@ -930,6 +1235,29 @@ const styles = StyleSheet.create({
   dropdownTextActive: {
     color: "#047857",
     fontWeight: "600",
+  },
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
+  // Authentication divider styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   // Main Container
@@ -940,18 +1268,18 @@ const styles = StyleSheet.create({
 
   // Header Styles
   header: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: "rgba(255,255,255,0.95)",
     borderBottomWidth: 1,
-    borderBottomColor: '#EDEEEF',
+    borderBottomColor: "#EDEEEF",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   menuButton: {
@@ -959,12 +1287,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   iconButton: {
@@ -984,45 +1312,45 @@ const styles = StyleSheet.create({
 
   // Back Button
   backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 16,
   },
   backText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    color: '#64748b',
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    color: "#64748b",
   },
 
   // Header Section
   sectionLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     color: colors.onSurfaceVariant,
     marginBottom: 4,
   },
   mainTitle: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.onSurface,
     marginBottom: 20,
   },
 
   // Action Buttons
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 24,
   },
   scheduleButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingVertical: 12,
     backgroundColor: colors.surfaceContainerLowest,
@@ -1032,14 +1360,14 @@ const styles = StyleSheet.create({
   },
   scheduleButtonText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.onSurface,
   },
   launchButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingVertical: 12,
     backgroundColor: colors.primary,
@@ -1052,7 +1380,7 @@ const styles = StyleSheet.create({
   },
   launchButtonText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onPrimary,
   },
 
@@ -1065,7 +1393,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1073,15 +1401,15 @@ const styles = StyleSheet.create({
   },
   statTitle: {
     fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     color: colors.onSurfaceVariant,
     marginBottom: 8,
   },
   statValue: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.onSurface,
     marginBottom: 4,
   },
@@ -1092,8 +1420,8 @@ const styles = StyleSheet.create({
 
   // Two Column Layout
   twoColumnLayout: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 16,
   },
   leftColumn: {
@@ -1110,21 +1438,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
   },
 
@@ -1136,9 +1464,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   programHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   programInfo: {
@@ -1147,7 +1475,7 @@ const styles = StyleSheet.create({
   },
   programTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
     marginBottom: 4,
   },
@@ -1169,13 +1497,13 @@ const styles = StyleSheet.create({
   },
   programStatusText: {
     fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     color: colors.onPrimaryFixed,
   },
   programFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.outlineVariant,
@@ -1186,51 +1514,51 @@ const styles = StyleSheet.create({
   },
   programParticipants: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.primary,
   },
 
   // Calendar Styles
   calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   calendarMonth: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
   },
   calendarNav: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   calendarNavButton: {
     padding: 4,
   },
   weekdayContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 8,
   },
   weekdayText: {
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurfaceVariant,
     paddingVertical: 8,
   },
   calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 20,
   },
   calendarCell: {
     width: `${100 / 7}%`,
     aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 8,
   },
   calendarCellOtherMonth: {
@@ -1271,19 +1599,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   eventsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   eventsTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
   },
   showAllText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.primary,
   },
 
@@ -1295,14 +1623,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   eventHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   eventTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.onSurface,
     flex: 1,
   },
@@ -1319,8 +1647,8 @@ const styles = StyleSheet.create({
   },
   eventStatusText: {
     fontSize: 8,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     color: colors.onPrimaryFixed,
   },
   eventDescription: {
@@ -1330,8 +1658,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   eventFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.outlineVariant,
@@ -1342,11 +1670,11 @@ const styles = StyleSheet.create({
   },
   eventLocation: {
     fontSize: 9,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.primary,
   },
   noEventsText: {
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 24,
     fontSize: 11,
     color: colors.onSurfaceVariant,
@@ -1355,26 +1683,26 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    maxHeight: "90%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.onSurface,
   },
   modalForm: {
@@ -1385,44 +1713,44 @@ const styles = StyleSheet.create({
   // Form Styles
   formLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.4,
     color: colors.onSurfaceVariant,
     marginBottom: 6,
   },
   formInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
     color: colors.onSurface,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   textArea: {
     minHeight: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   datePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   datePickerText: {
     fontSize: 14,
     color: colors.onSurface,
   },
   formButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: 12,
     paddingTop: 16,
   },
@@ -1431,7 +1759,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
   },
   cancelButtonText: {
     color: colors.onSurface,
@@ -1443,7 +1771,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   submitButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
 });

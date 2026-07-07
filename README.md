@@ -25,6 +25,10 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Local sign-in behavior
+
+Registration and sign-in now use local device storage for the session and account data. No registration or authentication payloads are sent to the remote API for this flow.
+
 ## Get a fresh project
 
 When you're ready, run:

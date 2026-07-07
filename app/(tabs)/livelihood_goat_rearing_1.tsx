@@ -1,49 +1,51 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Dimensions,
   Alert,
   Animated,
+  Dimensions,
+  Image,
   RefreshControl,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 // Theme Colors
 const colors = {
-  primary: '#006857',
-  primaryContainer: '#00846e',
-  onPrimary: '#ffffff',
-  onPrimaryContainer: '#f4fffa',
-  primaryFixed: '#7cf8da',
-  onPrimaryFixed: '#00201a',
-  primaryFixedDim: '#5ddbbe',
-  surface: '#f8f9fa',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f3f4f5',
-  surfaceContainer: '#edeeef',
-  surfaceContainerHighest: '#e1e3e4',
-  onSurface: '#191c1d',
-  onSurfaceVariant: '#3d4945',
-  outlineVariant: '#bccac4',
-  inverseSurface: '#2e3132',
-  inverseOnSurface: '#f0f1f2',
-  secondary: '#964900',
-  secondaryContainer: '#fc820c',
-  secondaryFixed: '#ffdcc6',
-  onSecondaryContainer: '#5e2c00',
-  error: '#ba1a1a',
-  errorContainer: '#ffdad6',
+  primary: "#006857",
+  primaryContainer: "#00846e",
+  onPrimary: "#ffffff",
+  onPrimaryContainer: "#f4fffa",
+  primaryFixed: "#7cf8da",
+  onPrimaryFixed: "#00201a",
+  primaryFixedDim: "#5ddbbe",
+  surface: "#f8f9fa",
+  surfaceContainerLowest: "#ffffff",
+  surfaceContainerLow: "#f3f4f5",
+  surfaceContainer: "#edeeef",
+  surfaceContainerHighest: "#e1e3e4",
+  onSurface: "#191c1d",
+  onSurfaceVariant: "#3d4945",
+  outlineVariant: "#bccac4",
+  inverseSurface: "#2e3132",
+  inverseOnSurface: "#f0f1f2",
+  secondary: "#964900",
+  secondaryContainer: "#fc820c",
+  secondaryFixed: "#ffdcc6",
+  onSecondaryContainer: "#5e2c00",
+  error: "#ba1a1a",
+  errorContainer: "#ffdad6",
+  rose: "#ef4444",
+  emerald: "#10b981",
 };
 
 // ---------- Footer Component ----------
@@ -61,7 +63,9 @@ const Footer = () => {
             </LinearGradient>
             <Text style={styles.footerFoundationName}>Aman Foundation</Text>
           </View>
-          <Text style={styles.footerTagline}>Creating lasting impact in communities</Text>
+          <Text style={styles.footerTagline}>
+            Creating lasting impact in communities
+          </Text>
         </View>
 
         <View style={styles.footerSection}>
@@ -72,7 +76,9 @@ const Footer = () => {
           </View>
           <View style={styles.footerContactItem}>
             <Ionicons name="mail-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>info@amanfoundation.org</Text>
+            <Text style={styles.footerContactText}>
+              info@amanfoundation.org
+            </Text>
           </View>
           <View style={styles.footerContactItem}>
             <Ionicons name="location-outline" size={16} color="#6B7280" />
@@ -85,8 +91,8 @@ const Footer = () => {
           <View style={styles.footerContactItem}>
             <Ionicons name="home-outline" size={16} color="#6B7280" />
             <Text style={styles.footerAddressText}>
-              Mumbai{'\n'}
-              Sector F-11/3, Maha{'\n'}
+              Mumbai{"\n"}
+              Sector F-11/3, Maha{"\n"}
               India
             </Text>
           </View>
@@ -94,7 +100,9 @@ const Footer = () => {
       </View>
 
       <View style={styles.footerBottom}>
-        <Text style={styles.footerCopyright}>© 2026 Aman Foundation. All Rights Reserved.</Text>
+        <Text style={styles.footerCopyright}>
+          © 2026 Aman Foundation. All Rights Reserved.
+        </Text>
         <View style={styles.footerLinks}>
           <Text style={styles.footerLinkText}>Terms & Conditions</Text>
           <Text style={styles.footerDot}>•</Text>
@@ -113,10 +121,12 @@ export default function GoatRearing() {
   const [showFooter, setShowFooter] = useState(false);
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
-  
+  const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
+  const authRotateAnim = useRef(new Animated.Value(0)).current;
 
   // Trajectory data
   const trajectoryHeights = {
@@ -191,9 +201,34 @@ export default function GoatRearing() {
     setLivelihoodDropdownOpen(!livelihoodDropdownOpen);
   };
 
+  const toggleAuthDropdown = () => {
+    const toValue = authDropdownOpen ? 0 : 1;
+    Animated.timing(authRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setAuthDropdownOpen(!authDropdownOpen);
+  };
+
   const handleNavigation = (route: string) => {
     toggleMenu();
     router.push(route);
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert("Success", "Logged out successfully");
+          router.replace("/login");
+        },
+      },
+    ]);
   };
 
   const handleScroll = (event: any) => {
@@ -216,18 +251,43 @@ export default function GoatRearing() {
     outputRange: ["0deg", "180deg"],
   });
 
-  const MetricCard = ({ title, value, trend, subtitle, isHighlighted = false }: any) => (
+  const rotateAuth = authRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const MetricCard = ({
+    title,
+    value,
+    trend,
+    subtitle,
+    isHighlighted = false,
+  }: any) => (
     <LinearGradient
-      colors={isHighlighted ? [colors.primary, colors.primaryContainer] : ['#FFFFFF', '#FFFFFF']}
+      colors={
+        isHighlighted
+          ? [colors.primary, colors.primaryContainer]
+          : ["#FFFFFF", "#FFFFFF"]
+      }
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.metricCard, isHighlighted && styles.metricCardHighlighted]}
     >
-      <Text style={[styles.metricTitle, isHighlighted && styles.metricTitleHighlighted]}>
+      <Text
+        style={[
+          styles.metricTitle,
+          isHighlighted && styles.metricTitleHighlighted,
+        ]}
+      >
         {title}
       </Text>
       <View style={styles.metricValueRow}>
-        <Text style={[styles.metricValue, isHighlighted && styles.metricValueHighlighted]}>
+        <Text
+          style={[
+            styles.metricValue,
+            isHighlighted && styles.metricValueHighlighted,
+          ]}
+        >
           {value}
         </Text>
         {trend && (
@@ -237,29 +297,63 @@ export default function GoatRearing() {
           </View>
         )}
       </View>
-      {subtitle && <Text style={[styles.metricSubtitle, isHighlighted && styles.metricSubtitleHighlighted]}>{subtitle}</Text>}
+      {subtitle && (
+        <Text
+          style={[
+            styles.metricSubtitle,
+            isHighlighted && styles.metricSubtitleHighlighted,
+          ]}
+        >
+          {subtitle}
+        </Text>
+      )}
     </LinearGradient>
   );
 
-  const HealthLogItem = ({ tag, beneficiary, checked, status, isHealthy }: any) => (
+  const HealthLogItem = ({
+    tag,
+    beneficiary,
+    checked,
+    status,
+    isHealthy,
+  }: any) => (
     <View style={styles.healthLogItem}>
       <View style={styles.healthLogLeft}>
-        <View style={[styles.healthLogIcon, isHealthy ? styles.healthIconHealthy : styles.healthIconWarning]}>
-          <MaterialIcons 
-            name={isHealthy ? "pets" : "medical-services"} 
-            size={16} 
-            color={isHealthy ? colors.primary : colors.secondary} 
+        <View
+          style={[
+            styles.healthLogIcon,
+            isHealthy ? styles.healthIconHealthy : styles.healthIconWarning,
+          ]}
+        >
+          <MaterialIcons
+            name={isHealthy ? "pets" : "medical-services"}
+            size={16}
+            color={isHealthy ? colors.primary : colors.secondary}
           />
         </View>
         <View>
           <Text style={styles.healthLogTag}>Tag #{tag}</Text>
-          <Text style={styles.healthLogBeneficiary}>Beneficiary: {beneficiary}</Text>
+          <Text style={styles.healthLogBeneficiary}>
+            Beneficiary: {beneficiary}
+          </Text>
         </View>
       </View>
       <View style={styles.healthLogRight}>
         <Text style={styles.healthLogChecked}>Checked: {checked}</Text>
-        <View style={[styles.healthStatusBadge, isHealthy ? styles.healthStatusHealthy : styles.healthStatusWarning]}>
-          <Text style={[styles.healthStatusText, isHealthy ? styles.healthStatusTextHealthy : styles.healthStatusTextWarning]}>
+        <View
+          style={[
+            styles.healthStatusBadge,
+            isHealthy ? styles.healthStatusHealthy : styles.healthStatusWarning,
+          ]}
+        >
+          <Text
+            style={[
+              styles.healthStatusText,
+              isHealthy
+                ? styles.healthStatusTextHealthy
+                : styles.healthStatusTextWarning,
+            ]}
+          >
             {status}
           </Text>
         </View>
@@ -295,14 +389,20 @@ export default function GoatRearing() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/")}
+        >
           <Ionicons name="grid-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Dashboard</Text>
         </TouchableOpacity>
 
         {/* EDUCATION WITH DROPDOWN */}
         <View>
-          <TouchableOpacity style={styles.menuItemWithDropdown} onPress={toggleEducationDropdown}>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleEducationDropdown}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="school-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Education</Text>
@@ -314,24 +414,43 @@ export default function GoatRearing() {
 
           {educationDropdownOpen && (
             <View style={styles.dropdownContainer}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_management_hub')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_management_hub")}
+              >
                 <Ionicons name="library-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_schools_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_schools_module")}
+              >
                 <Ionicons name="business-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Schools Overview</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_fellows_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_fellows_module")}
+              >
                 <Ionicons name="people-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Fellows Directory</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_students_module')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_students_module")}
+              >
                 <Ionicons name="calendar-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Students Directory</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/education_pta_programs')}>
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/education_pta_programs")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>PTA & Programs</Text>
               </TouchableOpacity>
             </View>
@@ -340,52 +459,157 @@ export default function GoatRearing() {
 
         {/* LIVELIHOOD WITH DROPDOWN - ACTIVE */}
         <View>
-          <TouchableOpacity style={styles.menuItemWithDropdown} onPress={toggleLivelihoodDropdown}>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleLivelihoodDropdown}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
               <Text style={styles.menuText}>Livelihood</Text>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateLivelihood }] }}>
+            <Animated.View
+              style={{ transform: [{ rotate: rotateLivelihood }] }}
+            >
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Animated.View>
           </TouchableOpacity>
 
           {livelihoodDropdownOpen && (
             <View style={styles.dropdownContainer}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_management_hub')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/livelihood_management_hub")}
+              >
                 <Ionicons name="apps-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Management Hub</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemActive]} onPress={() => handleNavigation('/livelihood_goat_rearing_1')}>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemActive]}
+                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
+              >
                 <Ionicons name="paw-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>Goat Rearing</Text>
+                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
+                  Goat Rearing
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/livelihood_sugarcane_cultivation')}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() =>
+                  handleNavigation("/livelihood_sugarcane_cultivation")
+                }
+              >
                 <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                 <Text style={styles.dropdownText}>Agriculture Support</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => handleNavigation('/beneficiary_master_profile')}>
-                <Ionicons name="people-circle-outline" size={18} color="#6b7280" />
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => handleNavigation("/beneficiary_master_profile")}
+              >
+                <Ionicons
+                  name="people-circle-outline"
+                  size={18}
+                  color="#6b7280"
+                />
                 <Text style={styles.dropdownText}>Beneficiaries</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/disaster_relief_management')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/disaster_relief_management")}
+        >
           <Ionicons name="snow-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Disaster Relief</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/hr_employee_management')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/hr_employee_management")}
+        >
           <Ionicons name="people-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>HR Management</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('/admin_access_control')}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => handleNavigation("/admin_access_control")}
+        >
           <Ionicons name="document-text-outline" size={20} color="#4b5563" />
           <Text style={styles.menuText}>Admin & Access</Text>
         </TouchableOpacity>
+
+        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+        <View style={styles.menuDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ACCOUNT</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            toggleMenu();
+            router.push("/profile");
+          }}
+        >
+          <Ionicons name="person-outline" size={20} color="#4b5563" />
+          <Text style={styles.menuText}>My Profile</Text>
+        </TouchableOpacity>
+
+        <View>
+          <TouchableOpacity
+            style={styles.menuItemWithDropdown}
+            onPress={toggleAuthDropdown}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Authentication</Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {authDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/login");
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Login Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  toggleMenu();
+                  router.push("/register");
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
+                <Text style={styles.dropdownText}>Register Page</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                onPress={handleLogout}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={colors.rose}
+                />
+                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
 
       {/* MAIN CONTENT */}
@@ -401,13 +625,34 @@ export default function GoatRearing() {
             <Text style={styles.headerTitle}>Impact Portal</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('Notifications', 'No new notifications')}>
-              <Ionicons name="notifications-outline" size={22} color="#6B7280" />
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                Alert.alert("Notifications", "No new notifications")
+              }
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color="#6B7280"
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={() => Alert.alert('Settings', 'Settings will be available soon')}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                Alert.alert("Settings", "Settings will be available soon")
+              }
+            >
               <Ionicons name="settings-outline" size={22} color="#6B7280" />
             </TouchableOpacity>
-            <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={styles.avatar} />
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+              <Image
+                source={{
+                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -416,10 +661,19 @@ export default function GoatRearing() {
           contentContainerStyle={styles.scrollContent}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+            />
+          }
         >
           {/* Back Link */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/livelihood_management_hub")}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.push("/livelihood_management_hub")}
+          >
             <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
             <Text style={styles.backText}>Back to Livelihood Hub</Text>
           </TouchableOpacity>
@@ -427,14 +681,21 @@ export default function GoatRearing() {
           {/* Page Header */}
           <View style={styles.pageHeader}>
             <View style={styles.pageHeaderContent}>
-              <Text style={styles.mainTitle}>Goat Rearing Distribution & Health</Text>
+              <Text style={styles.mainTitle}>
+                Goat Rearing Distribution & Health
+              </Text>
               <Text style={styles.subtitle}>
-                Monitoring livelihood impact through livestock distribution metrics, health tracking, 
-                and return on investment for rural beneficiaries.
+                Monitoring livelihood impact through livestock distribution
+                metrics, health tracking, and return on investment for rural
+                beneficiaries.
               </Text>
             </View>
             <TouchableOpacity style={styles.exportButton}>
-              <MaterialIcons name="download" size={16} color={colors.onPrimary} />
+              <MaterialIcons
+                name="download"
+                size={16}
+                color={colors.onPrimary}
+              />
               <Text style={styles.exportButtonText}>Export Data</Text>
             </TouchableOpacity>
           </View>
@@ -443,15 +704,17 @@ export default function GoatRearing() {
           <View style={styles.grid}>
             {/* Left Column - Metrics */}
             <View style={styles.leftColumn}>
-              <MetricCard 
-                title="Total Beneficiaries" 
-                value="1,248" 
-                trend="+12%" 
+              <MetricCard
+                title="Total Beneficiaries"
+                value="1,248"
+                trend="+12%"
                 subtitle="Across 32 active villages"
               />
               <View style={styles.metricCard}>
                 <Text style={styles.metricTitle}>Active Livestock</Text>
-                <Text style={[styles.metricValue, { fontSize: 32 }]}>3,740</Text>
+                <Text style={[styles.metricValue, { fontSize: 32 }]}>
+                  3,740
+                </Text>
                 <View style={styles.livestockStats}>
                   <View>
                     <View style={styles.livestockRow}>
@@ -459,7 +722,12 @@ export default function GoatRearing() {
                       <Text style={styles.livestockNumber}>2,100</Text>
                     </View>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '60%', backgroundColor: colors.primary }]} />
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: "60%", backgroundColor: colors.primary },
+                        ]}
+                      />
                     </View>
                   </View>
                   <View>
@@ -468,14 +736,22 @@ export default function GoatRearing() {
                       <Text style={styles.livestockNumber}>1,640</Text>
                     </View>
                     <View style={styles.progressBar}>
-                      <View style={[styles.progressFill, { width: '40%', backgroundColor: colors.primaryContainer }]} />
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: "40%",
+                            backgroundColor: colors.primaryContainer,
+                          },
+                        ]}
+                      />
                     </View>
                   </View>
                 </View>
               </View>
-              <MetricCard 
-                title="Avg. Household ROI" 
-                value="145%" 
+              <MetricCard
+                title="Avg. Household ROI"
+                value="145%"
                 subtitle="Estimated return over 24 months based on initial capital investment and organic herd growth."
                 isHighlighted={true}
               />
@@ -489,18 +765,36 @@ export default function GoatRearing() {
                   <Text style={styles.chartTitle}>Outcome Trajectory</Text>
                   <View style={styles.timeframeButtons}>
                     <TouchableOpacity
-                      style={[styles.timeframeButton, timeframe === "6 Months" && styles.timeframeButtonActive]}
+                      style={[
+                        styles.timeframeButton,
+                        timeframe === "6 Months" &&
+                          styles.timeframeButtonActive,
+                      ]}
                       onPress={() => setTimeframe("6 Months")}
                     >
-                      <Text style={[styles.timeframeText, timeframe === "6 Months" && styles.timeframeTextActive]}>
+                      <Text
+                        style={[
+                          styles.timeframeText,
+                          timeframe === "6 Months" &&
+                            styles.timeframeTextActive,
+                        ]}
+                      >
                         6 Months
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.timeframeButton, timeframe === "1 Year" && styles.timeframeButtonActive]}
+                      style={[
+                        styles.timeframeButton,
+                        timeframe === "1 Year" && styles.timeframeButtonActive,
+                      ]}
                       onPress={() => setTimeframe("1 Year")}
                     >
-                      <Text style={[styles.timeframeText, timeframe === "1 Year" && styles.timeframeTextActive]}>
+                      <Text
+                        style={[
+                          styles.timeframeText,
+                          timeframe === "1 Year" && styles.timeframeTextActive,
+                        ]}
+                      >
                         1 Year
                       </Text>
                     </TouchableOpacity>
@@ -528,7 +822,9 @@ export default function GoatRearing() {
                 {/* Locations */}
                 <View style={styles.locationsContainer}>
                   {locations.map((location, index) => (
-                    <Text key={index} style={styles.locationText}>{location}</Text>
+                    <Text key={index} style={styles.locationText}>
+                      {location}
+                    </Text>
                   ))}
                 </View>
               </View>
@@ -536,14 +832,16 @@ export default function GoatRearing() {
               {/* Health Logs */}
               <View style={styles.healthLogsCard}>
                 <View style={styles.healthLogsHeader}>
-                  <Text style={styles.healthLogsTitle}>Recent Livestock Health Logs</Text>
+                  <Text style={styles.healthLogsTitle}>
+                    Recent Livestock Health Logs
+                  </Text>
                   <TouchableOpacity>
                     <Text style={styles.viewAllText}>View All</Text>
                   </TouchableOpacity>
                 </View>
 
                 {healthLogs.map((log) => (
-                  <HealthLogItem 
+                  <HealthLogItem
                     key={log.id}
                     tag={log.tag}
                     beneficiary={log.beneficiary}
@@ -698,6 +996,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
+  dropdownItemLogout: {
+    borderTopWidth: 1,
+    borderTopColor: "#f3f4f6",
+    marginTop: 4,
+    paddingTop: 12,
+  },
+
   dropdownText: {
     fontSize: 13,
     color: "#6b7280",
@@ -707,6 +1012,33 @@ const styles = StyleSheet.create({
   dropdownTextActive: {
     color: "#047857",
     fontWeight: "600",
+  },
+
+  dropdownTextLogout: {
+    color: "#ef4444",
+  },
+
+  // Authentication divider styles
+  menuDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
+  },
+
+  dividerText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#9ca3af",
+    paddingHorizontal: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   // ==================================================
@@ -1183,24 +1515,24 @@ const styles = StyleSheet.create({
   // FOOTER
   // ==================================================
   footer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     marginTop: 40,
     marginBottom: 20,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 4,
     borderTopWidth: 1,
-    borderTopColor: '#EDEEEF',
+    borderTopColor: "#EDEEEF",
   },
 
   footerContent: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     marginBottom: 24,
     gap: 20,
   },
@@ -1211,8 +1543,8 @@ const styles = StyleSheet.create({
   },
 
   footerLogoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
 
@@ -1220,80 +1552,80 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
 
   footerFoundationName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#065f46',
+    fontWeight: "700",
+    color: "#065f46",
   },
 
   footerTagline: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     lineHeight: 16,
   },
 
   footerSectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#191C1D',
+    fontWeight: "600",
+    color: "#191C1D",
     marginBottom: 12,
   },
 
   footerContactItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 10,
     marginBottom: 10,
   },
 
   footerContactText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     flex: 1,
   },
 
   footerAddressText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     flex: 1,
     lineHeight: 18,
   },
 
   footerBottom: {
     borderTopWidth: 1,
-    borderTopColor: '#EDEEEF',
+    borderTopColor: "#EDEEEF",
     paddingTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 12,
   },
 
   footerCopyright: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
   },
 
   footerLinks: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
 
   footerLinkText: {
     fontSize: 12,
-    color: '#006857',
-    fontWeight: '500',
+    color: "#006857",
+    fontWeight: "500",
   },
 
   footerDot: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
 });
