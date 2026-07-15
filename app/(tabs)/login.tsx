@@ -1,5 +1,5 @@
 import { useToast } from "@/context/ToastContext";
-import { authenticateLocalUser } from "@/lib/authStorage";
+import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -74,19 +74,18 @@ export default function LoginPage() {
     setFormError("");
 
     try {
-      const result = await authenticateLocalUser(identifier.trim(), password);
-
-      if (!result) {
-        throw new Error("Invalid email/username or password");
-      }
-
+      await login(identifier.trim(), password);
       toast.success("Welcome back!");
-      await login(result.user, result.token);
       router.replace("/");
-    } catch (err: any) {
-      console.error("Login error:", err);
-      setFormError(err.message || "Unable to sign in locally.");
-      toast.error(err.message || "Unable to sign in locally.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Unable to sign in. Please try again.";
+      setFormError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -152,12 +151,7 @@ export default function LoginPage() {
                 </Text>
               </View>
 
-              {/* Local-only sign in info */}
-              <View style={styles.debugContainer}>
-                <Text style={styles.debugText}>
-                  🔐 This sign-in uses your device storage only.
-                </Text>
-              </View>
+
 
               {/* Error Message */}
               {formError ? (
