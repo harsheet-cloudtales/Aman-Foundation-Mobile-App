@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 
-const storeKey = "__amanFoundationUsers";
+const storeKey = "__amanFoundationUsers"; //data storage
 
 function getStore() {
   if (!globalThis[storeKey]) {

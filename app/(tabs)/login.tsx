@@ -151,8 +151,6 @@ export default function LoginPage() {
                 </Text>
               </View>
 
-
-
               {/* Error Message */}
               {formError ? (
                 <View style={styles.errorContainer}>

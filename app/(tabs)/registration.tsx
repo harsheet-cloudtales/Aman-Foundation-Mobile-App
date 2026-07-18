@@ -1,8 +1,9 @@
 import { useToast } from "@/context/ToastContext";
-import { registerLocalUser } from "@/lib/authStorage";
+import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,9 +19,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-const API_URL = "https://main.d1mnwey66nth5p.amplifyapp.com";
-
 export default function RegisterPage() {
+  // ============================================
+  // STATE MANAGEMENT
+  // ============================================
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +36,7 @@ export default function RegisterPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Error states
   const [firstNameError, setFirstNameError] = useState("");
   const [lastNameError, setLastNameError] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -43,30 +46,37 @@ export default function RegisterPage() {
   const [roleError, setRoleError] = useState("");
   const [formError, setFormError] = useState("");
 
+  // Password strength
   const [strengthWidth, setStrengthWidth] = useState("0%");
   const [strengthColor, setStrengthColor] = useState("#ff5252");
   const [strengthText, setStrengthText] = useState("");
 
+  // Hooks
+  const { register } = useAuth(); // ← Using useAuth().register() instead of local storage
   const toast = useToast();
   const router = useRouter();
 
+  // Roles (these should ideally come from an API)
   const roles = [
     { id: "cm0v1a2b3c4d5e6f7g8h9i0j1", name: "Fellow" },
     { id: "cm0v1a2b3c4d5e6f7g8h9i0j2", name: "Program Manager" },
   ];
 
-  useEffect(() => {
-    if (!password) {
+  // ============================================
+  // PASSWORD STRENGTH CHECKER
+  // ============================================
+  const checkPasswordStrength = (pass: string) => {
+    if (!pass) {
       setStrengthWidth("0%");
       setStrengthText("");
       return;
     }
 
     let score = 0;
-    if (password.length >= 8) score += 1;
-    if (/[A-Z]/.test(password)) score += 1;
-    if (/[0-9]/.test(password)) score += 1;
-    if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+    if (pass.length >= 8) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^a-zA-Z0-9]/.test(pass)) score += 1;
 
     if (score <= 1) {
       setStrengthWidth("33%");
@@ -81,8 +91,11 @@ export default function RegisterPage() {
       setStrengthColor("#10b981");
       setStrengthText("Strong");
     }
-  }, [password]);
+  };
 
+  // ============================================
+  // VALIDATION
+  // ============================================
   const validate = () => {
     let isValid = true;
     setFirstNameError("");
@@ -94,6 +107,7 @@ export default function RegisterPage() {
     setRoleError("");
     setFormError("");
 
+    // First name validation
     if (!firstName.trim()) {
       setFirstNameError("First name is required");
       isValid = false;
@@ -102,6 +116,7 @@ export default function RegisterPage() {
       isValid = false;
     }
 
+    // Last name validation
     if (!lastName.trim()) {
       setLastNameError("Last name is required");
       isValid = false;
@@ -110,6 +125,7 @@ export default function RegisterPage() {
       isValid = false;
     }
 
+    // Email validation
     if (!email) {
       setEmailError("Email is required");
       isValid = false;
@@ -118,6 +134,7 @@ export default function RegisterPage() {
       isValid = false;
     }
 
+    // Mobile validation
     if (!mobile) {
       setMobileError("Mobile number is required");
       isValid = false;
@@ -126,6 +143,7 @@ export default function RegisterPage() {
       isValid = false;
     }
 
+    // Password validation
     if (!password) {
       setPasswordError("Password is required");
       isValid = false;
@@ -134,6 +152,7 @@ export default function RegisterPage() {
       isValid = false;
     }
 
+    // Confirm password validation
     if (!confirmPassword) {
       setConfirmPasswordError("Please confirm your password");
       isValid = false;
@@ -142,11 +161,13 @@ export default function RegisterPage() {
       isValid = false;
     }
 
+    // Role validation
     if (!roleId) {
       setRoleError("Please select a role");
       isValid = false;
     }
 
+    // Terms agreement
     if (!agreeToTerms) {
       setFormError("Please agree to the Terms & Conditions");
       isValid = false;
@@ -155,6 +176,9 @@ export default function RegisterPage() {
     return isValid;
   };
 
+  // ============================================
+  // REGISTRATION HANDLER (UPDATED)
+  // ============================================
   const handleRegister = async () => {
     if (!validate()) return;
 
@@ -162,33 +186,44 @@ export default function RegisterPage() {
     setFormError("");
 
     try {
-      const selectedRole = roles.find((item) => item.id === roleId);
-
-      await registerLocalUser({
+      // USING useAuth().register() - follows the API pattern from README
+      await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim().toLowerCase(),
+        password: password,
         mobile: mobile.trim(),
-        password,
-        roleId,
-        roleName: selectedRole?.name,
+        roleId: roleId, // Send the role UUID
       });
 
-      toast.success("Registration successful! You can sign in now.");
+      // Success! Show modal and redirect
+      toast.success("Registration successful! Please wait for admin approval.");
       setShowSuccessModal(true);
 
+      // Auto-redirect after showing modal
       setTimeout(() => {
         setShowSuccessModal(false);
         router.push("/login");
       }, 2500);
-    } catch (err: any) {
-      setFormError(err.message || "Unable to save your account locally.");
-      toast.error(err.message || "Unable to save your account locally.");
+    } catch (err: unknown) {
+      // Type-safe error handling - matches login.tsx pattern
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Unable to create your account. Please try again.";
+
+      setFormError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   };
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -200,6 +235,7 @@ export default function RegisterPage() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* ===== HERO SECTION ===== */}
           <LinearGradient
             colors={["#0f766e", "#0d9488"]}
             start={{ x: 0, y: 0 }}
@@ -223,12 +259,14 @@ export default function RegisterPage() {
             </Text>
           </LinearGradient>
 
+          {/* ===== FORM CARD ===== */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Register</Text>
             <Text style={styles.cardSubtitle}>
               Fill in your details to request access.
             </Text>
 
+            {/* Form Error */}
             {formError ? (
               <View style={styles.errorBox}>
                 <Icon name="error-outline" size={16} color="#ef4444" />
@@ -239,6 +277,7 @@ export default function RegisterPage() {
               </View>
             ) : null}
 
+            {/* First Name */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>First name</Text>
               <View
@@ -271,6 +310,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Last Name */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Last name</Text>
               <View
@@ -303,6 +343,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Email */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Email address</Text>
               <View
@@ -337,6 +378,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Mobile */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Mobile number</Text>
               <View
@@ -371,6 +413,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Password */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Password</Text>
               <View
@@ -389,6 +432,7 @@ export default function RegisterPage() {
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
+                    checkPasswordStrength(text);
                     if (passwordError) setPasswordError("");
                   }}
                   placeholder="Create a password"
@@ -408,6 +452,8 @@ export default function RegisterPage() {
                   />
                 </TouchableOpacity>
               </View>
+
+              {/* Password Strength Indicator */}
               {password ? (
                 <View style={styles.strengthRow}>
                   <View style={styles.strengthTrack}>
@@ -431,6 +477,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Confirm Password */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Confirm password</Text>
               <View
@@ -473,6 +520,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Role Selection */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Select your role</Text>
               <View style={styles.roleRow}>
@@ -505,6 +553,7 @@ export default function RegisterPage() {
               ) : null}
             </View>
 
+            {/* Terms & Conditions */}
             <TouchableOpacity
               style={styles.termsRow}
               onPress={() => setAgreeToTerms(!agreeToTerms)}
@@ -526,6 +575,7 @@ export default function RegisterPage() {
               </Text>
             </TouchableOpacity>
 
+            {/* Register Button */}
             <TouchableOpacity
               style={[
                 styles.primaryButton,
@@ -544,15 +594,18 @@ export default function RegisterPage() {
               )}
             </TouchableOpacity>
 
+            {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
             </View>
 
+            {/* Login Link */}
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => router.push("/login")}
+              disabled={loading}
             >
               <Text style={styles.secondaryButtonText}>
                 Already have an account? Sign in
@@ -562,6 +615,7 @@ export default function RegisterPage() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* ===== SUCCESS MODAL ===== */}
       {showSuccessModal ? (
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -587,6 +641,9 @@ export default function RegisterPage() {
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -814,6 +871,7 @@ const styles = StyleSheet.create({
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
   divider: {
     flexDirection: "row",

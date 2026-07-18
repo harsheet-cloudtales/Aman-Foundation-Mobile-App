@@ -550,6 +550,7 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* //role based */}
         <View style={styles.roleBanner}>
           <Text style={styles.roleBannerTitle}>
             {isFellowUser ? "Fellow workspace" : "Program manager workspace"}
@@ -560,13 +561,11 @@ export default function Dashboard() {
               : "You have full access to the portal modules."}
           </Text>
         </View>
-
         {/* Title */}
         <View style={styles.section}>
           <Text style={styles.mainTitle}>YTD Impact{"\n"}Snapshot</Text>
           <Text style={styles.subText}>Data updated: Today, 09:41 AM</Text>
         </View>
-
         {/* Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.outlineBtn}>
@@ -592,7 +591,6 @@ export default function Dashboard() {
             <Text style={styles.smallText}>vs last quarter</Text>
           </View>
         </View>
-
         {/* Card 2 */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>ACTIVE FELLOWS</Text>
@@ -603,7 +601,6 @@ export default function Dashboard() {
           </View>
           <Text style={styles.smallText}>85% deployed</Text>
         </View>
-
         {/* Grid Cards */}
         <View style={styles.grid}>
           <View style={styles.halfCard}>
@@ -618,7 +615,6 @@ export default function Dashboard() {
             <Text style={styles.cardSubWhite}>Families Supported</Text>
           </View>
         </View>
-
         {/* CHART WITH AXIS */}
         <View style={styles.section}>
           <Text style={styles.heading}>Education Enrollment Growth</Text>
@@ -652,7 +648,6 @@ export default function Dashboard() {
             </View>
           </View>
         </View>
-
         {/* Activity */}
         <View style={styles.section}>
           <Text style={styles.heading}>Program Highlights</Text>
@@ -687,7 +682,6 @@ export default function Dashboard() {
             </View>
           </View>
         </View>
-
         {/* Footer - Only visible when scrolled */}
         {showFooter && <Footer />}
       </ScrollView>
@@ -1255,5 +1249,3 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
   },
 });
-
-//see where are the fellow code and also check for the leave system for fellow

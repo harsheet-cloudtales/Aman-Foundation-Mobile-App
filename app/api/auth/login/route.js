@@ -9,6 +9,7 @@ function getStore() {
   return globalThis[storeKey];
 }
 
+// admin user seeding function
 async function seedAdminUser() {
   const store = getStore();
   if (store.some((user) => user.email === "admin@amanfoundation.org")) {
@@ -43,6 +44,7 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
+// login request handler
 export async function POST(req) {
   await seedAdminUser();
 
