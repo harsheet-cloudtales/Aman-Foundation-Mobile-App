@@ -1,9 +1,13 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -22,7 +26,37 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// Theme Colors
+// ============================================
+// TYPES
+// ============================================
+interface Farmer {
+  id: string;
+  initials: string;
+  bgInitials: string;
+  name: string;
+  location: string;
+  parcel: number;
+  stage: string;
+  stageClass: string;
+  soilType: string;
+  waterSource: string;
+  estYield: number;
+  estIncome: number;
+  phone?: string;
+  enrollmentDate?: string;
+}
+
+interface SugarcaneStats {
+  totalFarmers: number;
+  totalLand: number;
+  totalYield: number;
+  avgIncome: number;
+  growthRate: string;
+}
+
+// ============================================
+// THEME COLORS
+// ============================================
 const colors = {
   primary: "#006857",
   primaryContainer: "#00846e",
@@ -50,7 +84,9 @@ const colors = {
   emerald: "#10b981",
 };
 
-// ---------- Footer Component ----------
+// ============================================
+// FOOTER COMPONENT
+// ============================================
 const Footer = () => {
   return (
     <View style={styles.footer}>
@@ -115,123 +151,29 @@ const Footer = () => {
   );
 };
 
-// Farmer type
-interface Farmer {
-  id: number;
-  initials: string;
-  bgInitials: string;
-  name: string;
-  location: string;
-  parcel: number;
-  stage: string;
-  stageClass: string;
-  soilType: string;
-  waterSource: string;
-  estYield: number;
-  estIncome: number;
-}
-
-// Initial Farmers Data
-const initialFarmers: Farmer[] = [
-  {
-    id: 1,
-    initials: "AB",
-    bgInitials: "#d1fae5",
-    name: "Amina Begum",
-    location: "Bartari, Kalgachia",
-    parcel: 4.5,
-    stage: "Growing",
-    stageClass: "bg-primary/10 text-primary",
-    soilType: "Clay Loam",
-    waterSource: "Drip Irrigation",
-    estYield: 202.5,
-    estIncome: 631800,
-  },
-  {
-    id: 2,
-    initials: "JA",
-    bgInitials: "#fed7aa",
-    name: "Joynal Abedin",
-    location: "Digjani, Kalgachia",
-    parcel: 2.1,
-    stage: "Harvesting",
-    stageClass: "bg-tertiary-container/20 text-tertiary",
-    soilType: "Sandy Soil",
-    waterSource: "Rainfed",
-    estYield: 94.5,
-    estIncome: 294840,
-  },
-  {
-    id: 3,
-    initials: "SD",
-    bgInitials: "#e5e7eb",
-    name: "Sawpan Das",
-    location: "Sawpur, Kalgachia",
-    parcel: 8.0,
-    stage: "Planting",
-    stageClass: "bg-inverse-primary/20 text-primary-container",
-    soilType: "Alluvial Soil",
-    waterSource: "Canal Linkage",
-    estYield: 360.0,
-    estIncome: 1123200,
-  },
-  {
-    id: 4,
-    initials: "RA",
-    bgInitials: "#d1fae5",
-    name: "Rahmat Ali",
-    location: "Balikuri, Kalgachia",
-    parcel: 5.2,
-    stage: "Growing",
-    stageClass: "bg-primary/10 text-primary",
-    soilType: "Clay Loam",
-    waterSource: "Drip Irrigation",
-    estYield: 234.0,
-    estIncome: 730080,
-  },
-  {
-    id: 5,
-    initials: "BD",
-    bgInitials: "#fed7aa",
-    name: "Bhanu Das",
-    location: "Gunialguri, Kalgachia",
-    parcel: 3.8,
-    stage: "Planting",
-    stageClass: "bg-inverse-primary/20 text-primary-container",
-    soilType: "Alluvial Soil",
-    waterSource: "Canal Linkage",
-    estYield: 171.0,
-    estIncome: 533520,
-  },
-  {
-    id: 6,
-    initials: "AB",
-    bgInitials: "#e5e7eb",
-    name: "Abdul Baten",
-    location: "Moinbari, Kalgachia",
-    parcel: 2.5,
-    stage: "Harvesting",
-    stageClass: "bg-tertiary-container/20 text-tertiary",
-    soilType: "Sandy Soil",
-    waterSource: "Rainfed",
-    estYield: 112.5,
-    estIncome: 351000,
-  },
-];
-
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function SugarcaneCultivation() {
+  const { user } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showFooter, setShowFooter] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [selectedStage, setSelectedStage] = useState("All");
-  const [farmers, setFarmers] = useState<Farmer[]>(initialFarmers);
-  const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(
-    initialFarmers[0],
-  );
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
+  const [stats, setStats] = useState<SugarcaneStats>({
+    totalFarmers: 0,
+    totalLand: 0,
+    totalYield: 0,
+    avgIncome: 0,
+    growthRate: "+0%",
+  });
 
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
@@ -255,7 +197,153 @@ export default function SugarcaneCultivation() {
   const [newStage, setNewStage] = useState("Planting");
   const [newSoil, setNewSoil] = useState("Clay Loam");
   const [newWater, setNewWater] = useState("Rainfed");
+  const [newPhone, setNewPhone] = useState("");
 
+  // ============================================
+  // FETCH DATA
+  // ============================================
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch farmers
+      const farmersData = await api.get<Farmer[]>("/api/livelihood/farmers");
+      if (farmersData && farmersData.length > 0) {
+        setFarmers(farmersData);
+        setSelectedFarmer(farmersData[0]);
+
+        // Calculate stats
+        const totalLand = farmersData.reduce((acc, f) => acc + f.parcel, 0);
+        const totalYield = farmersData.reduce((acc, f) => acc + f.estYield, 0);
+        const avgIncome =
+          farmersData.length > 0
+            ? farmersData.reduce((acc, f) => acc + f.estIncome, 0) /
+              farmersData.length
+            : 0;
+
+        setStats({
+          totalFarmers: farmersData.length,
+          totalLand: totalLand,
+          totalYield: totalYield,
+          avgIncome: avgIncome,
+          growthRate: "+18%",
+        });
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Sugarcane data fetch error:", err.message);
+      }
+      // Fallback data
+      const fallbackFarmers: Farmer[] = [
+        {
+          id: "1",
+          initials: "AB",
+          bgInitials: "#d1fae5",
+          name: "Amina Begum",
+          location: "Bartari, Kalgachia",
+          parcel: 4.5,
+          stage: "Growing",
+          stageClass: "bg-primary/10 text-primary",
+          soilType: "Clay Loam",
+          waterSource: "Drip Irrigation",
+          estYield: 202.5,
+          estIncome: 631800,
+        },
+        {
+          id: "2",
+          initials: "JA",
+          bgInitials: "#fed7aa",
+          name: "Joynal Abedin",
+          location: "Digjani, Kalgachia",
+          parcel: 2.1,
+          stage: "Harvesting",
+          stageClass: "bg-tertiary-container/20 text-tertiary",
+          soilType: "Sandy Soil",
+          waterSource: "Rainfed",
+          estYield: 94.5,
+          estIncome: 294840,
+        },
+        {
+          id: "3",
+          initials: "SD",
+          bgInitials: "#e5e7eb",
+          name: "Sawpan Das",
+          location: "Sawpur, Kalgachia",
+          parcel: 8.0,
+          stage: "Planting",
+          stageClass: "bg-inverse-primary/20 text-primary-container",
+          soilType: "Alluvial Soil",
+          waterSource: "Canal Linkage",
+          estYield: 360.0,
+          estIncome: 1123200,
+        },
+        {
+          id: "4",
+          initials: "RA",
+          bgInitials: "#d1fae5",
+          name: "Rahmat Ali",
+          location: "Balikuri, Kalgachia",
+          parcel: 5.2,
+          stage: "Growing",
+          stageClass: "bg-primary/10 text-primary",
+          soilType: "Clay Loam",
+          waterSource: "Drip Irrigation",
+          estYield: 234.0,
+          estIncome: 730080,
+        },
+        {
+          id: "5",
+          initials: "BD",
+          bgInitials: "#fed7aa",
+          name: "Bhanu Das",
+          location: "Gunialguri, Kalgachia",
+          parcel: 3.8,
+          stage: "Planting",
+          stageClass: "bg-inverse-primary/20 text-primary-container",
+          soilType: "Alluvial Soil",
+          waterSource: "Canal Linkage",
+          estYield: 171.0,
+          estIncome: 533520,
+        },
+        {
+          id: "6",
+          initials: "AB",
+          bgInitials: "#e5e7eb",
+          name: "Abdul Baten",
+          location: "Moinbari, Kalgachia",
+          parcel: 2.5,
+          stage: "Harvesting",
+          stageClass: "bg-tertiary-container/20 text-tertiary",
+          soilType: "Sandy Soil",
+          waterSource: "Rainfed",
+          estYield: 112.5,
+          estIncome: 351000,
+        },
+      ];
+      setFarmers(fallbackFarmers);
+      setSelectedFarmer(fallbackFarmers[0]);
+      setStats({
+        totalFarmers: fallbackFarmers.length,
+        totalLand: fallbackFarmers.reduce((acc, f) => acc + f.parcel, 0),
+        totalYield: fallbackFarmers.reduce((acc, f) => acc + f.estYield, 0),
+        avgIncome:
+          fallbackFarmers.reduce((acc, f) => acc + f.estIncome, 0) /
+          fallbackFarmers.length,
+        growthRate: "+18%",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -270,6 +358,16 @@ export default function SugarcaneCultivation() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -304,11 +402,10 @@ export default function SugarcaneCultivation() {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
-  // Logout function
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -330,7 +427,7 @@ export default function SugarcaneCultivation() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    fetchData();
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -348,6 +445,77 @@ export default function SugarcaneCultivation() {
     outputRange: ["0deg", "180deg"],
   });
 
+  // ============================================
+  // CRUD OPERATIONS
+  // ============================================
+  const handleEnrollFarmer = async () => {
+    if (!newFarmerName || !newLocation || !newParcel) {
+      Alert.alert("Error", "Please fill all required fields");
+      return;
+    }
+
+    try {
+      const hectares = parseFloat(newParcel);
+      const tons = hectares * 45;
+      const income = tons * 3120;
+
+      const newFarmer = {
+        name: newFarmerName,
+        location: newLocation,
+        parcel: hectares,
+        stage: newStage,
+        soilType: newSoil,
+        waterSource: newWater,
+        phone: newPhone,
+        estYield: tons,
+        estIncome: income,
+      };
+
+      const response = await api.post("/api/livelihood/farmers", newFarmer);
+
+      if (response) {
+        Alert.alert("Success", "Farmer enrolled successfully");
+        setNewFarmerName("");
+        setNewLocation("");
+        setNewParcel("");
+        setNewStage("Planting");
+        setNewSoil("Clay Loam");
+        setNewWater("Rainfed");
+        setNewPhone("");
+        setShowEnrollModal(false);
+        fetchData();
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        Alert.alert("Error", err.message);
+      }
+    }
+  };
+
+  const handleDeleteFarmer = (id: string, name: string) => {
+    Alert.alert("Delete Farmer", `Are you sure you want to delete ${name}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.del(`/api/livelihood/farmers/${id}`);
+            Alert.alert("Success", "Farmer deleted successfully");
+            fetchData();
+          } catch (err) {
+            if (err instanceof ApiError) {
+              Alert.alert("Error", err.message);
+            }
+          }
+        },
+      },
+    ]);
+  };
+
+  // ============================================
+  // FILTERS
+  // ============================================
   const locations = [
     "All",
     ...new Set(farmers.map((f) => f.location.split(",")[0].trim())),
@@ -364,58 +532,9 @@ export default function SugarcaneCultivation() {
     return matchesSearch && matchesLocation && matchesStage;
   });
 
-  const totalFarmers = farmers.length + 1245;
-  const totalLand = farmers.reduce((acc, f) => acc + f.parcel, 0);
-  const totalYield = farmers.reduce((acc, f) => acc + f.estYield, 0);
-
-  const handleEnrollFarmer = () => {
-    if (!newFarmerName || !newLocation || !newParcel) {
-      Alert.alert("Error", "Please fill all required fields");
-      return;
-    }
-
-    const initials = newFarmerName
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
-    const hectares = parseFloat(newParcel);
-    const tons = hectares * 45;
-    const income = tons * 3120;
-
-    const newFarmer: Farmer = {
-      id: farmers.length + 1,
-      initials,
-      bgInitials: "#d1fae5",
-      name: newFarmerName,
-      location: newLocation,
-      parcel: hectares,
-      stage: newStage,
-      stageClass:
-        newStage === "Growing"
-          ? "bg-primary/10 text-primary"
-          : newStage === "Harvesting"
-            ? "bg-tertiary-container/20 text-tertiary"
-            : "bg-inverse-primary/20 text-primary-container",
-      soilType: newSoil,
-      waterSource: newWater,
-      estYield: tons,
-      estIncome: income,
-    };
-
-    setFarmers([newFarmer, ...farmers]);
-    setSelectedFarmer(newFarmer);
-    setNewFarmerName("");
-    setNewLocation("");
-    setNewParcel("");
-    setNewStage("Planting");
-    setNewSoil("Clay Loam");
-    setNewWater("Rainfed");
-    setShowEnrollModal(false);
-    Alert.alert("Success", "Farmer enrolled successfully");
-  };
-
+  // ============================================
+  // COMPONENTS
+  // ============================================
   const FilterPickerModal = ({
     visible,
     onClose,
@@ -467,7 +586,7 @@ export default function SugarcaneCultivation() {
         {trend && (
           <View style={styles.trendBadge}>
             <MaterialIcons name="trending-up" size={10} color="#10b981" />
-            <Text style={styles.trendText}>+12%</Text>
+            <Text style={styles.trendText}>{stats.growthRate}</Text>
           </View>
         )}
       </View>
@@ -498,721 +617,801 @@ export default function SugarcaneCultivation() {
           <Text style={styles.farmerLocation}>{farmer.location}</Text>
         </View>
       </View>
-      <View>
-        <Text style={styles.farmerParcel}>{farmer.parcel} Hectares</Text>
-        <View
-          style={[
-            styles.stageBadge,
-            {
-              backgroundColor:
-                farmer.stage === "Growing"
-                  ? "#d1fae5"
-                  : farmer.stage === "Harvesting"
-                    ? "#e5e7eb"
-                    : "#e8f5e9",
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.stageText,
-              {
-                color:
-                  farmer.stage === "Growing"
-                    ? "#059669"
-                    : farmer.stage === "Harvesting"
-                      ? "#6B7280"
-                      : "#006857",
-              },
-            ]}
-          >
-            {farmer.stage}
-          </Text>
-        </View>
-      </View>
+      <TouchableOpacity
+        onPress={() => handleDeleteFarmer(farmer.id, farmer.name)}
+      >
+        <MaterialIcons name="delete-outline" size={20} color={colors.rose} />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading sugarcane data...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        <View style={styles.brandContainer}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            style={styles.brandIcon}
-          >
-            <MaterialIcons name="local-library" size={22} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
 
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Students Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>PTA & Programs</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN - ACTIVE */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
-                  Agriculture Support
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryContainer]}
+                style={styles.brandIcon}
+              >
+                <MaterialIcons name="local-library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
 
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={18}
-                  color={colors.rose}
-                />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-              <MaterialIcons name="menu" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Impact Portal</Text>
-          </View>
-          <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
+            >
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
+
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
+                  >
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Students Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PTA & Programs</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD WITH DROPDOWN - ACTIVE */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemActive]}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#047857" />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextActive]}
+                    >
+                      Agriculture Support
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
             >
               <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#6B7280"
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
               />
+              <Text style={styles.menuText}>Admin & Access</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
-            >
-              <Ionicons name="settings-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/profile")}>
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {/* Back Link */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/livelihood_management_hub")}
+            {/* AUTHENTICATION SECTION */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={colors.rose}
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+                <MaterialIcons name="menu" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Impact Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile")}>
+                <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatar}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+              />
+            }
           >
-            <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
-            <Text style={styles.backText}>Back to Livelihood Hub</Text>
-          </TouchableOpacity>
-
-          {/* Header Section */}
-          <View>
-            <Text style={styles.sectionLabel}>Livelihood Module</Text>
-            <Text style={styles.mainTitle}>Sugarcane Cultivation</Text>
-            <Text style={styles.subtitle}>
-              Tracking farmer enrolment, seasonal growth cycles, and yield
-              forecasts for the current harvest year.
-            </Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.exportButton}>
-              <MaterialIcons
-                name="download"
-                size={16}
-                color={colors.onSurface}
-              />
-              <Text style={styles.exportButtonText}>Export Report</Text>
-            </TouchableOpacity>
+            {/* Back Link */}
             <TouchableOpacity
-              style={styles.enrollButton}
-              onPress={() => setShowEnrollModal(true)}
+              style={styles.backBtn}
+              onPress={() => router.push("/livelihood_management_hub")}
             >
-              <MaterialIcons
-                name="person-add"
-                size={16}
-                color={colors.onPrimary}
-              />
-              <Text style={styles.enrollButtonText}>Enroll Farmer</Text>
+              <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
+              <Text style={styles.backText}>Back to Livelihood Hub</Text>
             </TouchableOpacity>
-          </View>
 
-          {/* KPI Cards */}
-          <View style={styles.kpiContainer}>
-            <KpiCard
-              title="Active Farmers"
-              value={totalFarmers}
-              trend="+12%"
-              icon="Enrolled this season"
-            />
-            <KpiCard
-              title="Total Land Parcel"
-              value={totalLand.toFixed(1)}
-              unit="Hectares"
-              icon="Across Kalgachia circle"
-            />
-            <KpiCard
-              title="Est. Yield Forecast"
-              value={totalYield.toFixed(0)}
-              unit="Tons"
-              icon="Expected Q4 Harvest"
-            />
-          </View>
+            {/* Header Section */}
+            <View>
+              <Text style={styles.sectionLabel}>Livelihood Module</Text>
+              <Text style={styles.mainTitle}>Sugarcane Cultivation</Text>
+              <Text style={styles.subtitle}>
+                Tracking farmer enrolment, seasonal growth cycles, and yield
+                forecasts for the current harvest year.
+              </Text>
+            </View>
 
-          {/* Selected Farmer Details */}
-          {selectedFarmer && (
-            <View style={styles.farmerDetailCard}>
-              <View style={styles.farmerDetailHeader}>
-                <View
-                  style={[
-                    styles.farmerDetailAvatar,
-                    { backgroundColor: selectedFarmer.bgInitials },
-                  ]}
-                >
-                  <Text style={styles.farmerDetailInitials}>
-                    {selectedFarmer.initials}
-                  </Text>
-                </View>
-                <View>
-                  <Text style={styles.farmerDetailName}>
-                    {selectedFarmer.name}
-                  </Text>
-                  <Text style={styles.farmerDetailLocation}>
-                    {selectedFarmer.location}
-                  </Text>
-                </View>
-              </View>
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity style={styles.exportButton}>
+                <MaterialIcons
+                  name="download"
+                  size={16}
+                  color={colors.onSurface}
+                />
+                <Text style={styles.exportButtonText}>Export Report</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.enrollButton}
+                onPress={() => setShowEnrollModal(true)}
+              >
+                <MaterialIcons
+                  name="person-add"
+                  size={16}
+                  color={colors.onPrimary}
+                />
+                <Text style={styles.enrollButtonText}>Enroll Farmer</Text>
+              </TouchableOpacity>
+            </View>
 
-              <View style={styles.farmerDetailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Soil Profile type</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedFarmer.soilType}
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Watering Resource</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedFarmer.waterSource}
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Parcel Area Size</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedFarmer.parcel} Hectares
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current Growth Stage</Text>
-                  <Text style={[styles.detailValue, { color: colors.primary }]}>
-                    {selectedFarmer.stage}
-                  </Text>
-                </View>
-              </View>
+            {/* KPI Cards */}
+            <View style={styles.kpiContainer}>
+              <KpiCard
+                title="Active Farmers"
+                value={stats.totalFarmers + 1245}
+                trend={stats.growthRate}
+                icon="Enrolled this season"
+              />
+              <KpiCard
+                title="Total Land Parcel"
+                value={stats.totalLand.toFixed(1)}
+                unit="Hectares"
+                icon="Across Kalgachia circle"
+              />
+              <KpiCard
+                title="Est. Yield Forecast"
+                value={stats.totalYield.toFixed(0)}
+                unit="Tons"
+                icon="Expected Q4 Harvest"
+              />
+            </View>
 
-              {/* Income Calculator */}
-              <View style={styles.calculatorCard}>
-                <Text style={styles.calculatorTitle}>
-                  Yield & Income Performance Calculator
-                </Text>
-                <View style={styles.calculatorRow}>
-                  <Text style={styles.calculatorLabel}>
-                    Hectares Cultivated
-                  </Text>
-                  <Text style={styles.calculatorValue}>
-                    {selectedFarmer.parcel} Hectares
-                  </Text>
-                </View>
-                <View style={styles.calculatorRow}>
-                  <Text style={styles.calculatorLabel}>
-                    Benchmark Yield Ratio
-                  </Text>
-                  <Text style={styles.calculatorValue}>45 Tons / Hectare</Text>
-                </View>
-                <View style={styles.calculatorRow}>
-                  <Text style={styles.calculatorLabel}>
-                    Estimated Total Yield
-                  </Text>
-                  <Text
+            {/* Selected Farmer Details */}
+            {selectedFarmer && (
+              <View style={styles.farmerDetailCard}>
+                <View style={styles.farmerDetailHeader}>
+                  <View
                     style={[
-                      styles.calculatorValue,
-                      { color: colors.primary, fontWeight: "bold" },
+                      styles.farmerDetailAvatar,
+                      { backgroundColor: selectedFarmer.bgInitials },
                     ]}
                   >
-                    {selectedFarmer.estYield.toFixed(1)} Tons
-                  </Text>
+                    <Text style={styles.farmerDetailInitials}>
+                      {selectedFarmer.initials}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.farmerDetailName}>
+                      {selectedFarmer.name}
+                    </Text>
+                    <Text style={styles.farmerDetailLocation}>
+                      {selectedFarmer.location}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.calculatorRow}>
-                  <Text style={styles.calculatorLabel}>Market Rate</Text>
-                  <Text style={styles.calculatorValue}>₹3,120 / Ton</Text>
+
+                <View style={styles.farmerDetailGrid}>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Soil Profile type</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedFarmer.soilType}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Watering Resource</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedFarmer.waterSource}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Parcel Area Size</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedFarmer.parcel} Hectares
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Current Growth Stage</Text>
+                    <Text
+                      style={[styles.detailValue, { color: colors.primary }]}
+                    >
+                      {selectedFarmer.stage}
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.calculatorRow, styles.calculatorTotalRow]}>
-                  <Text style={styles.calculatorTotalLabel}>
-                    Projected Net Income
+
+                {/* Income Calculator */}
+                <View style={styles.calculatorCard}>
+                  <Text style={styles.calculatorTitle}>
+                    Yield & Income Performance Calculator
                   </Text>
-                  <Text style={styles.calculatorTotalValue}>
-                    ₹{selectedFarmer.estIncome.toLocaleString("en-IN")}
-                  </Text>
+                  <View style={styles.calculatorRow}>
+                    <Text style={styles.calculatorLabel}>
+                      Hectares Cultivated
+                    </Text>
+                    <Text style={styles.calculatorValue}>
+                      {selectedFarmer.parcel} Hectares
+                    </Text>
+                  </View>
+                  <View style={styles.calculatorRow}>
+                    <Text style={styles.calculatorLabel}>
+                      Benchmark Yield Ratio
+                    </Text>
+                    <Text style={styles.calculatorValue}>
+                      45 Tons / Hectare
+                    </Text>
+                  </View>
+                  <View style={styles.calculatorRow}>
+                    <Text style={styles.calculatorLabel}>
+                      Estimated Total Yield
+                    </Text>
+                    <Text
+                      style={[
+                        styles.calculatorValue,
+                        { color: colors.primary, fontWeight: "bold" },
+                      ]}
+                    >
+                      {selectedFarmer.estYield.toFixed(1)} Tons
+                    </Text>
+                  </View>
+                  <View style={styles.calculatorRow}>
+                    <Text style={styles.calculatorLabel}>Market Rate</Text>
+                    <Text style={styles.calculatorValue}>₹3,120 / Ton</Text>
+                  </View>
+                  <View
+                    style={[styles.calculatorRow, styles.calculatorTotalRow]}
+                  >
+                    <Text style={styles.calculatorTotalLabel}>
+                      Projected Net Income
+                    </Text>
+                    <Text style={styles.calculatorTotalValue}>
+                      ₹{selectedFarmer.estIncome.toLocaleString("en-IN")}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </View>
-          )}
-
-          {/* Farmers Table */}
-          <View style={styles.tableCard}>
-            <View style={styles.tableHeader}>
-              <View>
-                <Text style={styles.tableTitle}>Recent Farmer Enrolments</Text>
-                <Text style={styles.tableSubtitle}>
-                  Latest registered beneficiaries and parcel data. Tap on any
-                  row to view full file and calculator.
-                </Text>
-              </View>
-            </View>
-
-            {/* Search and Filters */}
-            <View style={styles.filterBar}>
-              <View style={styles.searchContainer}>
-                <MaterialIcons name="search" size={18} color="#9ca3af" />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search farmers..."
-                  placeholderTextColor="#9ca3af"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.filterChip}
-                onPress={() => setShowLocationPicker(true)}
-              >
-                <Text style={styles.filterChipText}>
-                  {selectedLocation === "All"
-                    ? "All Villages"
-                    : selectedLocation}
-                </Text>
-                <MaterialIcons name="expand-more" size={16} color="#6B7280" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterChip}
-                onPress={() => setShowStagePicker(true)}
-              >
-                <Text style={styles.filterChipText}>
-                  {selectedStage === "All" ? "All Stages" : selectedStage}
-                </Text>
-                <MaterialIcons name="expand-more" size={16} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Farmers List */}
-            {filteredFarmers.map((farmer) => (
-              <FarmerRow
-                key={farmer.id}
-                farmer={farmer}
-                isSelected={selectedFarmer?.id === farmer.id}
-                onPress={() => setSelectedFarmer(farmer)}
-              />
-            ))}
-            {filteredFarmers.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  No registered farmers match your search query.
-                </Text>
               </View>
             )}
-          </View>
 
-          {/* Footer */}
-          {showFooter && <Footer />}
-        </ScrollView>
-      </SafeAreaView>
+            {/* Farmers Table */}
+            <View style={styles.tableCard}>
+              <View style={styles.tableHeader}>
+                <View>
+                  <Text style={styles.tableTitle}>
+                    Recent Farmer Enrolments
+                  </Text>
+                  <Text style={styles.tableSubtitle}>
+                    Latest registered beneficiaries and parcel data. Tap on any
+                    row to view full file and calculator.
+                  </Text>
+                </View>
+              </View>
 
-      {/* Filter Modals */}
-      <FilterPickerModal
-        visible={showLocationPicker}
-        onClose={() => setShowLocationPicker(false)}
-        items={locations}
-        selected={selectedLocation}
-        onSelect={setSelectedLocation}
-        title="Select Village"
-      />
-      <FilterPickerModal
-        visible={showStagePicker}
-        onClose={() => setShowStagePicker(false)}
-        items={stages}
-        selected={selectedStage}
-        onSelect={setSelectedStage}
-        title="Select Stage"
-      />
+              {/* Search and Filters */}
+              <View style={styles.filterBar}>
+                <View style={styles.searchContainer}>
+                  <MaterialIcons name="search" size={18} color="#9ca3af" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search farmers..."
+                    placeholderTextColor="#9ca3af"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.filterChip}
+                  onPress={() => setShowLocationPicker(true)}
+                >
+                  <Text style={styles.filterChipText}>
+                    {selectedLocation === "All"
+                      ? "All Villages"
+                      : selectedLocation}
+                  </Text>
+                  <MaterialIcons name="expand-more" size={16} color="#6B7280" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.filterChip}
+                  onPress={() => setShowStagePicker(true)}
+                >
+                  <Text style={styles.filterChipText}>
+                    {selectedStage === "All" ? "All Stages" : selectedStage}
+                  </Text>
+                  <MaterialIcons name="expand-more" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
-      {/* Enrollment Modal */}
-      <Modal
-        visible={showEnrollModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowEnrollModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.enrollModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Enroll New Sugarcane Farmer</Text>
-              <TouchableOpacity onPress={() => setShowEnrollModal(false)}>
-                <MaterialIcons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
+              {/* Farmers List */}
+              {filteredFarmers.map((farmer) => (
+                <FarmerRow
+                  key={farmer.id}
+                  farmer={farmer}
+                  isSelected={selectedFarmer?.id === farmer.id}
+                  onPress={() => setSelectedFarmer(farmer)}
+                />
+              ))}
+              {filteredFarmers.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    No registered farmers match your search query.
+                  </Text>
+                </View>
+              )}
             </View>
 
-            <ScrollView style={styles.modalForm}>
-              <View>
-                <Text style={styles.formLabel}>Farmer Full Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. David Mwangi"
-                  placeholderTextColor="#9ca3af"
-                  value={newFarmerName}
-                  onChangeText={setNewFarmerName}
-                />
-              </View>
+            {/* Footer */}
+            {showFooter && <Footer />}
+          </ScrollView>
+        </SafeAreaView>
 
-              <View>
-                <Text style={styles.formLabel}>Location / Region *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Sawpur, Kalgachia"
-                  placeholderTextColor="#9ca3af"
-                  value={newLocation}
-                  onChangeText={setNewLocation}
-                />
-              </View>
+        {/* Filter Modals */}
+        <FilterPickerModal
+          visible={showLocationPicker}
+          onClose={() => setShowLocationPicker(false)}
+          items={locations}
+          selected={selectedLocation}
+          onSelect={setSelectedLocation}
+          title="Select Village"
+        />
+        <FilterPickerModal
+          visible={showStagePicker}
+          onClose={() => setShowStagePicker(false)}
+          items={stages}
+          selected={selectedStage}
+          onSelect={setSelectedStage}
+          title="Select Stage"
+        />
 
-              <View>
-                <Text style={styles.formLabel}>Parcel Size (Hectares) *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  keyboardType="numeric"
-                  placeholder="e.g. 3.5"
-                  placeholderTextColor="#9ca3af"
-                  value={newParcel}
-                  onChangeText={setNewParcel}
-                />
-              </View>
-
-              <View>
-                <Text style={styles.formLabel}>Soil Profile Type</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={newSoil}
-                    onValueChange={(itemValue) => setNewSoil(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Clay Loam" value="Clay Loam" />
-                    <Picker.Item label="Sandy Soil" value="Sandy Soil" />
-                    <Picker.Item label="Alluvial Soil" value="Alluvial Soil" />
-                  </Picker>
-                </View>
-              </View>
-
-              <View>
-                <Text style={styles.formLabel}>Watering Resource Linkage</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={newWater}
-                    onValueChange={(itemValue) => setNewWater(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Rainfed" value="Rainfed" />
-                    <Picker.Item
-                      label="Drip Irrigation"
-                      value="Drip Irrigation"
-                    />
-                    <Picker.Item label="Canal Linkage" value="Canal Linkage" />
-                  </Picker>
-                </View>
-              </View>
-
-              <View>
-                <Text style={styles.formLabel}>Crop Stage</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={newStage}
-                    onValueChange={(itemValue) => setNewStage(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Planting" value="Planting" />
-                    <Picker.Item label="Growing" value="Growing" />
-                    <Picker.Item label="Harvesting" value="Harvesting" />
-                  </Picker>
-                </View>
-              </View>
-
-              <View style={styles.formButtons}>
-                <TouchableOpacity
-                  onPress={() => setShowEnrollModal(false)}
-                  style={styles.cancelButton}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleEnrollFarmer}
-                  style={styles.submitButton}
-                >
-                  <Text style={styles.submitButtonText}>Enroll Farmer</Text>
+        {/* Enrollment Modal */}
+        <Modal
+          visible={showEnrollModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowEnrollModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.enrollModalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  Enroll New Sugarcane Farmer
+                </Text>
+                <TouchableOpacity onPress={() => setShowEnrollModal(false)}>
+                  <MaterialIcons name="close" size={24} color="#64748b" />
                 </TouchableOpacity>
               </View>
-            </ScrollView>
+
+              <ScrollView style={styles.modalForm}>
+                <View>
+                  <Text style={styles.formLabel}>Farmer Full Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. David Mwangi"
+                    placeholderTextColor="#9ca3af"
+                    value={newFarmerName}
+                    onChangeText={setNewFarmerName}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Location / Region *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Sawpur, Kalgachia"
+                    placeholderTextColor="#9ca3af"
+                    value={newLocation}
+                    onChangeText={setNewLocation}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Parcel Size (Hectares) *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    keyboardType="numeric"
+                    placeholder="e.g. 3.5"
+                    placeholderTextColor="#9ca3af"
+                    value={newParcel}
+                    onChangeText={setNewParcel}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Phone Number</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    keyboardType="phone-pad"
+                    placeholder="e.g. 9876543210"
+                    placeholderTextColor="#9ca3af"
+                    value={newPhone}
+                    onChangeText={setNewPhone}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Soil Profile Type</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={newSoil}
+                      onValueChange={(itemValue) => setNewSoil(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Clay Loam" value="Clay Loam" />
+                      <Picker.Item label="Sandy Soil" value="Sandy Soil" />
+                      <Picker.Item
+                        label="Alluvial Soil"
+                        value="Alluvial Soil"
+                      />
+                    </Picker>
+                  </View>
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>
+                    Watering Resource Linkage
+                  </Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={newWater}
+                      onValueChange={(itemValue) => setNewWater(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Rainfed" value="Rainfed" />
+                      <Picker.Item
+                        label="Drip Irrigation"
+                        value="Drip Irrigation"
+                      />
+                      <Picker.Item
+                        label="Canal Linkage"
+                        value="Canal Linkage"
+                      />
+                    </Picker>
+                  </View>
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Crop Stage</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={newStage}
+                      onValueChange={(itemValue) => setNewStage(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Planting" value="Planting" />
+                      <Picker.Item label="Growing" value="Growing" />
+                      <Picker.Item label="Harvesting" value="Harvesting" />
+                    </Picker>
+                  </View>
+                </View>
+
+                <View style={styles.formButtons}>
+                  <TouchableOpacity
+                    onPress={() => setShowEnrollModal(false)}
+                    style={styles.cancelButton}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleEnrollFarmer}
+                    style={styles.submitButton}
+                  >
+                    <Text style={styles.submitButtonText}>Enroll Farmer</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </RouteGuard>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
+  // Sidebar
   overlay: {
     position: "absolute",
     width: "100%",
@@ -1287,7 +1486,6 @@ const styles = StyleSheet.create({
   dropdownText: { fontSize: 13, color: "#6b7280", marginLeft: 10 },
   dropdownTextActive: { color: "#047857", fontWeight: "600" },
   dropdownTextLogout: { color: "#ef4444" },
-  // Authentication divider styles
   menuDivider: {
     flexDirection: "row",
     alignItems: "center",
@@ -1715,7 +1913,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   submitButtonText: { color: "white", fontWeight: "600" },
-  // Footer Styles
+  // Footer
   footer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,

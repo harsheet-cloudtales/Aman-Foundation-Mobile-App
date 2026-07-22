@@ -1,28 +1,71 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const { width } = Dimensions.get("window");
 
-// Theme Colors
+// ============================================
+// TYPES
+// ============================================
+interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  status: string;
+  attendance: string;
+  leavesUsed: number;
+  sopSigned: boolean;
+  email: string;
+  userId?: string;
+}
+
+interface AttendanceLog {
+  id: string;
+  email: string;
+  status: string;
+  statusType: string;
+  workHours: string;
+  loginTime: string;
+  tasks: string;
+  lastUpdated: string;
+}
+
+interface LeaveRequest {
+  id: string;
+  coach: string;
+  type: string;
+  requestedDates: string;
+  leavesTaken: number;
+  leavesRemaining: number;
+  status: string;
+}
+
+// ============================================
+// THEME COLORS
+// ============================================
 const colors = {
   primary: "#006857",
   primaryContainer: "#00846e",
@@ -51,7 +94,9 @@ const colors = {
   blue: "#3b82f6",
 };
 
-// ---------- Footer Component ----------
+// ============================================
+// FOOTER COMPONENT
+// ============================================
 const Footer = () => {
   return (
     <View style={styles.footer}>
@@ -116,10 +161,15 @@ const Footer = () => {
   );
 };
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function HrEmployeeManagement() {
+  const { user } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -136,259 +186,10 @@ export default function HrEmployeeManagement() {
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
-  // Employees data
-  const [employees, setEmployees] = useState([
-    {
-      id: "EMP-082",
-      name: "Sarah Jenkins",
-      role: "Field Operations Lead",
-      department: "Operations",
-      status: "Active Mission",
-      attendance: "09:02 AM",
-      leavesUsed: 4,
-      sopSigned: true,
-      email: "sarah.jenkins@amanfoundation.org",
-    },
-    {
-      id: "EMP-104",
-      name: "David Chen",
-      role: "Relief Coordinator",
-      department: "Logistics",
-      status: "In Office",
-      attendance: "08:58 AM",
-      leavesUsed: 8,
-      sopSigned: true,
-      email: "david.chen@amanfoundation.org",
-    },
-    {
-      id: "EMP-304",
-      name: "Maria Lopez",
-      role: "Education Specialist",
-      department: "Education",
-      status: "On Leave",
-      attendance: "On Leave",
-      leavesUsed: 12,
-      sopSigned: false,
-      email: "maria.lopez@amanfoundation.org",
-    },
-    {
-      id: "EMP-201",
-      name: "Ahsan Kamal",
-      role: "Field Representative",
-      department: "Operations",
-      status: "Active Mission",
-      attendance: "08:45 AM",
-      leavesUsed: 3,
-      sopSigned: true,
-      email: "ahsan.kamal@amanfoundation.org",
-    },
-    {
-      id: "EMP-205",
-      name: "Ibrahim Khan",
-      role: "Logistics Specialist",
-      department: "Logistics",
-      status: "In Office",
-      attendance: "08:50 AM",
-      leavesUsed: 2,
-      sopSigned: true,
-      email: "ibrahim.khan@amanfoundation.org",
-    },
-    {
-      id: "EMP-206",
-      name: "Darshan Mohankar",
-      role: "Area Manager",
-      department: "Operations",
-      status: "In Office",
-      attendance: "09:15 AM",
-      leavesUsed: 5,
-      sopSigned: true,
-      email: "darshan.mohankar@amanfoundation.org",
-    },
-    {
-      id: "EMP-207",
-      name: "Minakshi Kansare",
-      role: "Health Educator",
-      department: "Education",
-      status: "On Leave",
-      attendance: "On Leave",
-      leavesUsed: 7,
-      sopSigned: true,
-      email: "minakshi.kansare@amanfoundation.org",
-    },
-    {
-      id: "EMP-208",
-      name: "Aman Sharma",
-      role: "HR Director",
-      department: "HR",
-      status: "In Office",
-      attendance: "08:30 AM",
-      leavesUsed: 1,
-      sopSigned: true,
-      email: "aman.sharma@amanfoundation.org",
-    },
-    {
-      id: "EMP-209",
-      name: "Priya Das",
-      role: "Finance Officer",
-      department: "Finance",
-      status: "In Office",
-      attendance: "09:00 AM",
-      leavesUsed: 0,
-      sopSigned: true,
-      email: "priya.das@amanfoundation.org",
-    },
-  ]);
-
-  // Attendance Logs
-  const [attendanceLogs, setAttendanceLogs] = useState([
-    {
-      id: "att-1",
-      email: "mayuriaoti@gmail.com",
-      status: "Working: 7h 14m",
-      statusType: "working",
-      workHours: "7h 14m",
-      loginTime: "N/A",
-      tasks: "1 tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-    {
-      id: "att-2",
-      email: "muralikade@gmail.com",
-      status: "No Data",
-      statusType: "nodata",
-      workHours: "N/A",
-      loginTime: "N/A",
-      tasks: "No tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-    {
-      id: "att-3",
-      email: "nathajisadhana188@gmail.com",
-      status: "No Data",
-      statusType: "nodata",
-      workHours: "N/A",
-      loginTime: "N/A",
-      tasks: "No tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-    {
-      id: "att-4",
-      email: "pavan.yafdsv@gmail.com",
-      status: "Logged in at 12:30",
-      statusType: "loggedin",
-      workHours: "Calculating...",
-      loginTime: "12:30",
-      tasks: "2 tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-    {
-      id: "att-5",
-      email: "pooja.gramurja@gmail.com",
-      status: "No Data",
-      statusType: "nodata",
-      workHours: "N/A",
-      loginTime: "N/A",
-      tasks: "No tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-    {
-      id: "att-6",
-      email: "pratibhadesmukh672@gmail.com",
-      status: "Working: 7h 3m",
-      statusType: "working",
-      workHours: "7h 3m",
-      loginTime: "N/A",
-      tasks: "3 tasks",
-      lastUpdated: "11:41:16 PM",
-    },
-    {
-      id: "att-7",
-      email: "sagarbhagat2020@gmail.com",
-      status: "No Data",
-      statusType: "nodata",
-      workHours: "N/A",
-      loginTime: "N/A",
-      tasks: "No tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-    {
-      id: "att-8",
-      email: "samyashaikh150@gmail.com",
-      status: "No Data",
-      statusType: "nodata",
-      workHours: "N/A",
-      loginTime: "N/A",
-      tasks: "No tasks",
-      lastUpdated: "11:41:15 PM",
-    },
-  ]);
-
-  // Leave Approvals
-  const [leaveApprovals, setLeaveApprovals] = useState([
-    {
-      id: "leave-1",
-      coach: "Ahsan Kamal",
-      type: "Casual Leave",
-      requestedDates: "2026-06-02 to 2026-06-04",
-      leavesTaken: 1,
-      leavesRemaining: 14,
-      status: "APPROVED",
-    },
-    {
-      id: "leave-2",
-      coach: "Ibrahim Khan",
-      type: "Casual Leave",
-      requestedDates: "2026-05-30",
-      leavesTaken: 0,
-      leavesRemaining: 15,
-      status: "REJECTED",
-    },
-    {
-      id: "leave-3",
-      coach: "Darshan Mohankar",
-      type: "Casual Leave",
-      requestedDates: "2026-06-02",
-      leavesTaken: 0,
-      leavesRemaining: 15,
-      status: "REJECTED",
-    },
-    {
-      id: "leave-4",
-      coach: "Minakshi Kansare",
-      type: "Sick Leave",
-      requestedDates: "2026-06-02",
-      leavesTaken: 1,
-      leavesRemaining: 14,
-      status: "REJECTED",
-    },
-    {
-      id: "leave-5",
-      coach: "Minakshi Kansare",
-      type: "Sick Leave",
-      requestedDates: "2026-05-25",
-      leavesTaken: 1,
-      leavesRemaining: 14,
-      status: "APPROVED",
-    },
-    {
-      id: "leave-6",
-      coach: "Sarah Jenkins",
-      type: "Casual Leave",
-      requestedDates: "2026-06-10 to 2026-06-12",
-      leavesTaken: 4,
-      leavesRemaining: 12,
-      status: "PENDING",
-    },
-    {
-      id: "leave-7",
-      coach: "David Chen",
-      type: "Sick Leave",
-      requestedDates: "2026-06-15",
-      leavesTaken: 8,
-      leavesRemaining: 8,
-      status: "PENDING",
-    },
-  ]);
+  // Data states
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
+  const [leaveApprovals, setLeaveApprovals] = useState<LeaveRequest[]>([]);
 
   // Filter states
   const [directorySearch, setDirectorySearch] = useState("");
@@ -399,16 +200,176 @@ export default function HrEmployeeManagement() {
 
   // Form states
   const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newDept, setNewDept] = useState("Operations");
   const [newStatus, setNewStatus] = useState("In Office");
 
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+  // ============================================
+  // FETCH DATA
+  // ============================================
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch users (employees)
+      const usersData = await api.get("/api/users");
+      if (usersData && usersData.data) {
+        const transformedEmployees: Employee[] = usersData.data.map(
+          (u: any) => ({
+            id: u.id || `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            name: u.name || "Unknown",
+            role: u.roleName || "Staff",
+            department: u.department || "Operations",
+            status: u.status === "ACTIVE" ? "In Office" : "On Leave",
+            attendance: u.lastLogin || "Not checked-in",
+            leavesUsed: u.leavesUsed || 0,
+            sopSigned: u.sopSigned || false,
+            email: u.email || "",
+            userId: u.id,
+          }),
+        );
+        setEmployees(transformedEmployees);
+      }
+
+      // Fetch attendance
+      const attendanceData = await api.get("/api/attendance");
+      if (attendanceData && attendanceData.data) {
+        const transformedAttendance: AttendanceLog[] = attendanceData.data.map(
+          (a: any) => ({
+            id: a.id || `att-${Math.random()}`,
+            email: a.email || "unknown@aman.org",
+            status: a.status || "No Data",
+            statusType: a.statusType || "nodata",
+            workHours: a.workHours || "N/A",
+            loginTime: a.loginTime || "N/A",
+            tasks: a.tasks || "No tasks",
+            lastUpdated: a.lastUpdated || new Date().toISOString(),
+          }),
+        );
+        setAttendanceLogs(transformedAttendance);
+      }
+
+      // Fetch leaves
+      const leavesData = await api.get("/api/leaves");
+      if (leavesData && leavesData.data) {
+        const transformedLeaves: LeaveRequest[] = leavesData.data.map(
+          (l: any) => ({
+            id: l.id || `leave-${Math.random()}`,
+            coach: l.userName || "Unknown",
+            type: l.type || "Casual Leave",
+            requestedDates: l.requestedDates || "N/A",
+            leavesTaken: l.leavesTaken || 0,
+            leavesRemaining: l.leavesRemaining || 15,
+            status: l.status || "PENDING",
+          }),
+        );
+        setLeaveApprovals(transformedLeaves);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("HR data fetch error:", err.message);
+      }
+      // Fallback data
+      setEmployees([
+        {
+          id: "EMP-082",
+          name: "Sarah Jenkins",
+          role: "Field Operations Lead",
+          department: "Operations",
+          status: "Active Mission",
+          attendance: "09:02 AM",
+          leavesUsed: 4,
+          sopSigned: true,
+          email: "sarah.jenkins@amanfoundation.org",
+        },
+        {
+          id: "EMP-104",
+          name: "David Chen",
+          role: "Relief Coordinator",
+          department: "Logistics",
+          status: "In Office",
+          attendance: "08:58 AM",
+          leavesUsed: 8,
+          sopSigned: true,
+          email: "david.chen@amanfoundation.org",
+        },
+        {
+          id: "EMP-304",
+          name: "Maria Lopez",
+          role: "Education Specialist",
+          department: "Education",
+          status: "On Leave",
+          attendance: "On Leave",
+          leavesUsed: 12,
+          sopSigned: false,
+          email: "maria.lopez@amanfoundation.org",
+        },
+      ]);
+      setAttendanceLogs([
+        {
+          id: "att-1",
+          email: "mayuriaoti@gmail.com",
+          status: "Working: 7h 14m",
+          statusType: "working",
+          workHours: "7h 14m",
+          loginTime: "N/A",
+          tasks: "1 tasks",
+          lastUpdated: "11:41:15 PM",
+        },
+        {
+          id: "att-2",
+          email: "muralikade@gmail.com",
+          status: "No Data",
+          statusType: "nodata",
+          workHours: "N/A",
+          loginTime: "N/A",
+          tasks: "No tasks",
+          lastUpdated: "11:41:15 PM",
+        },
+      ]);
+      setLeaveApprovals([
+        {
+          id: "leave-1",
+          coach: "Ahsan Kamal",
+          type: "Casual Leave",
+          requestedDates: "2026-06-02 to 2026-06-04",
+          leavesTaken: 1,
+          leavesRemaining: 14,
+          status: "APPROVED",
+        },
+        {
+          id: "leave-2",
+          coach: "Ibrahim Khan",
+          type: "Casual Leave",
+          requestedDates: "2026-05-30",
+          leavesTaken: 0,
+          leavesRemaining: 15,
+          status: "REJECTED",
+        },
+        {
+          id: "leave-3",
+          coach: "Darshan Mohankar",
+          type: "Casual Leave",
+          requestedDates: "2026-06-02",
+          leavesTaken: 0,
+          leavesRemaining: 15,
+          status: "PENDING",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -423,6 +384,16 @@ export default function HrEmployeeManagement() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -457,11 +428,10 @@ export default function HrEmployeeManagement() {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
-  // Logout function
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -478,7 +448,7 @@ export default function HrEmployeeManagement() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    fetchData();
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -496,32 +466,83 @@ export default function HrEmployeeManagement() {
     outputRange: ["0deg", "180deg"],
   });
 
+  // ============================================
+  // CRUD OPERATIONS
+  // ============================================
+  const handleAddEmployee = async () => {
+    if (!newName || !newEmail) {
+      Alert.alert("Error", "Please fill all required fields");
+      return;
+    }
+
+    try {
+      const newUser = {
+        name: newName,
+        email: newEmail,
+        roleName: newRole || "Staff",
+        department: newDept,
+        status: "ACTIVE",
+      };
+
+      const response = await api.post("/api/users", newUser);
+
+      if (response) {
+        triggerToast(`Successfully registered new hire: ${newName}`);
+        setNewName("");
+        setNewEmail("");
+        setNewRole("");
+        setNewDept("Operations");
+        setNewStatus("In Office");
+        setShowAddModal(false);
+        fetchData();
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        Alert.alert("Error", err.message);
+      }
+    }
+  };
+
   const handleDeleteLog = (id: string, email: string) => {
     setAttendanceLogs((prev) => prev.filter((log) => log.id !== id));
     triggerToast(`Attendance log for ${email} deleted.`);
   };
 
-  const handleApproveLeave = (id: string, coach: string) => {
-    setLeaveApprovals((prev) =>
-      prev.map((l) =>
-        l.id === id
-          ? {
-              ...l,
-              status: "APPROVED",
-              leavesTaken: l.leavesTaken + 1,
-              leavesRemaining: Math.max(0, l.leavesRemaining - 1),
-            }
-          : l,
-      ),
-    );
-    triggerToast(`Approved leave request for ${coach}`);
+  const handleApproveLeave = async (id: string, coach: string) => {
+    try {
+      await api.put(`/api/leaves/${id}`, { status: "APPROVED" });
+      setLeaveApprovals((prev) =>
+        prev.map((l) =>
+          l.id === id
+            ? {
+                ...l,
+                status: "APPROVED",
+                leavesTaken: l.leavesTaken + 1,
+                leavesRemaining: Math.max(0, l.leavesRemaining - 1),
+              }
+            : l,
+        ),
+      );
+      triggerToast(`Approved leave request for ${coach}`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        Alert.alert("Error", err.message);
+      }
+    }
   };
 
-  const handleRejectLeave = (id: string, coach: string) => {
-    setLeaveApprovals((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, status: "REJECTED" } : l)),
-    );
-    triggerToast(`Rejected leave request for ${coach}`);
+  const handleRejectLeave = async (id: string, coach: string) => {
+    try {
+      await api.put(`/api/leaves/${id}`, { status: "REJECTED" });
+      setLeaveApprovals((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, status: "REJECTED" } : l)),
+      );
+      triggerToast(`Rejected leave request for ${coach}`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        Alert.alert("Error", err.message);
+      }
+    }
   };
 
   const handleResetLeave = (id: string, coach: string) => {
@@ -531,34 +552,15 @@ export default function HrEmployeeManagement() {
     triggerToast(`Reset leave request for ${coach} to PENDING.`);
   };
 
-  const handleAddEmployee = () => {
-    if (!newName || !newRole) {
-      Alert.alert("Error", "Please fill all required fields");
-      return;
-    }
-
-    const email = `${newName.toLowerCase().replace(/\s+/g, ".")}@amanfoundation.org`;
-    const newEmp = {
-      id: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-      name: newName,
-      role: newRole,
-      department: newDept,
-      status: newStatus,
-      attendance: "Not checked-in",
-      leavesUsed: 0,
-      sopSigned: false,
-      email: email,
-    };
-
-    setEmployees([...employees, newEmp]);
-    setNewName("");
-    setNewRole("");
-    setNewDept("Operations");
-    setNewStatus("In Office");
-    setShowAddModal(false);
-    triggerToast(`Successfully registered new hire: ${newName}`);
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
+  // ============================================
+  // FILTERS
+  // ============================================
   const filteredEmployees = employees.filter((emp) => {
     const matchesSearch =
       emp.name.toLowerCase().includes(directorySearch.toLowerCase()) ||
@@ -581,6 +583,9 @@ export default function HrEmployeeManagement() {
     return matchesSearch && matchesStatus;
   });
 
+  // ============================================
+  // RENDER HELPERS
+  // ============================================
   const renderStatusPill = (statusType: string, statusText: string) => {
     let dotColor = "";
     let bgColor = "";
@@ -643,7 +648,9 @@ export default function HrEmployeeManagement() {
     </TouchableOpacity>
   );
 
-  // Team Directory Table Header
+  // ============================================
+  // TABLE HEADERS
+  // ============================================
   const TeamDirectoryHeader = () => (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerCell, styles.headerId]}>Employee ID</Text>
@@ -655,7 +662,6 @@ export default function HrEmployeeManagement() {
     </View>
   );
 
-  // Attendance Table Header
   const AttendanceHeader = () => (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerCell, styles.attEmail]}>Employee</Text>
@@ -667,7 +673,6 @@ export default function HrEmployeeManagement() {
     </View>
   );
 
-  // Leave Table Header
   const LeaveHeader = () => (
     <View style={styles.tableHeader}>
       <Text style={[styles.headerCell, styles.leaveCoach]}>Coach</Text>
@@ -682,385 +687,903 @@ export default function HrEmployeeManagement() {
     </View>
   );
 
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading HR data...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <RoleGuard>
+    <RouteGuard>
       <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        <View style={styles.brandContainer}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            style={styles.brandIcon}
-          >
-            <MaterialIcons name="local-library" size={22} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
 
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Students Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>PTA & Programs</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.menuItem, styles.menuItemActive]}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#fff" />
-          <Text style={styles.menuTextActive}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryContainer]}
+                style={styles.brandIcon}
+              >
+                <MaterialIcons name="local-library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
 
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={18}
-                  color={colors.rose}
-                />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-              <MaterialIcons name="menu" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Impact Portal</Text>
-          </View>
-          <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
+            >
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
+
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
+                  >
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Students Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PTA & Programs</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemActive]}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#fff" />
+              <Text style={styles.menuTextActive}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
             >
               <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#6B7280"
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
               />
+              <Text style={styles.menuText}>Admin & Access</Text>
             </TouchableOpacity>
+
+            {/* AUTHENTICATION SECTION */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
             <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
             >
-              <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/profile")}>
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatar}
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={colors.rose}
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+                <MaterialIcons name="menu" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Impact Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile")}>
+                <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatar}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
               />
+            }
+          >
+            {/* Back Link */}
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.push("/")}
+            >
+              <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
+              <Text style={styles.backText}>Back to Dashboard</Text>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {/* Back Link */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/")}
-          >
-            <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
-            <Text style={styles.backText}>Back to Dashboard</Text>
-          </TouchableOpacity>
+            {/* Page Header */}
+            <View>
+              <Text style={styles.sectionLabel}>Administration Module</Text>
+              <Text style={styles.mainTitle}>Human Resources & Personnel</Text>
+              <Text style={styles.subtitle}>
+                Manage employee databases, daily attendance tracking, approval
+                workflows, and standard operating procedures (SOP).
+              </Text>
+            </View>
 
-          {/* Page Header */}
-          <View>
-            <Text style={styles.sectionLabel}>Administration Module</Text>
-            <Text style={styles.mainTitle}>Human Resources & Personnel</Text>
-            <Text style={styles.subtitle}>
-              Manage employee databases, daily attendance tracking, approval
-              workflows, and standard operating procedures (SOP).
-            </Text>
-          </View>
+            {/* Add Button */}
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowAddModal(true)}
+            >
+              <MaterialIcons
+                name="person-add"
+                size={18}
+                color={colors.onPrimary}
+              />
+              <Text style={styles.addButtonText}>New Hire Registration</Text>
+            </TouchableOpacity>
 
-          {/* Add Button */}
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddModal(true)}
-          >
-            <MaterialIcons
-              name="person-add"
-              size={18}
-              color={colors.onPrimary}
-            />
-            <Text style={styles.addButtonText}>New Hire Registration</Text>
-          </TouchableOpacity>
+            {/* Tabs */}
+            <View style={styles.tabContainer}>
+              <ToggleTab title="Team Directory" />
+              <ToggleTab title="Attendance Logs" />
+              <ToggleTab title="Leave Workflow" />
+              <ToggleTab title="SOP acknowledged registers" />
+              <ToggleTab title="HR Reports & headcount" />
+            </View>
 
-          {/* Tabs */}
-          <View style={styles.tabContainer}>
-            <ToggleTab title="Team Directory" />
-            <ToggleTab title="Attendance Logs" />
-            <ToggleTab title="Leave Workflow" />
-            <ToggleTab title="SOP acknowledged registers" />
-            <ToggleTab title="HR Reports & headcount" />
-          </View>
+            {/* Tab Content */}
+            <View style={styles.tabContent}>
+              {/* TEAM DIRECTORY TAB */}
+              {activeTab === "Team Directory" && (
+                <View>
+                  <View style={styles.directoryHeader}>
+                    <Text style={styles.tableTitle}>
+                      Staff & Employee Directory
+                    </Text>
+                    <Text style={styles.recordCount}>
+                      {filteredEmployees.length} employees found
+                    </Text>
+                  </View>
 
-          {/* Tab Content */}
-          <View style={styles.tabContent}>
-            {/* TEAM DIRECTORY TAB - SCROLLABLE HORIZONTALLY */}
-            {activeTab === "Team Directory" && (
-              <View>
-                <View style={styles.directoryHeader}>
+                  {/* Filters */}
+                  <View style={styles.filterContainer}>
+                    <View style={styles.searchContainer}>
+                      <MaterialIcons name="search" size={18} color="#9ca3af" />
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search name, role, ID..."
+                        placeholderTextColor="#9ca3af"
+                        value={directorySearch}
+                        onChangeText={setDirectorySearch}
+                      />
+                    </View>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={directoryDept}
+                        onValueChange={(itemValue) =>
+                          setDirectoryDept(itemValue)
+                        }
+                        style={styles.filterPicker}
+                      >
+                        <Picker.Item label="All Departments" value="All" />
+                        <Picker.Item label="Operations" value="Operations" />
+                        <Picker.Item label="Logistics" value="Logistics" />
+                        <Picker.Item label="Education" value="Education" />
+                        <Picker.Item label="HR" value="HR" />
+                        <Picker.Item label="Finance" value="Finance" />
+                      </Picker>
+                    </View>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={directoryStatus}
+                        onValueChange={(itemValue) =>
+                          setDirectoryStatus(itemValue)
+                        }
+                        style={styles.filterPicker}
+                      >
+                        <Picker.Item label="All Statuses" value="All" />
+                        <Picker.Item label="In Office" value="In Office" />
+                        <Picker.Item
+                          label="Active Mission"
+                          value="Active Mission"
+                        />
+                        <Picker.Item label="On Leave" value="On Leave" />
+                      </Picker>
+                    </View>
+                  </View>
+
+                  {/* Scrollable Table */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                    <View style={styles.tableContainer}>
+                      <TeamDirectoryHeader />
+                      {filteredEmployees.map((emp) => (
+                        <View key={emp.id} style={styles.tableRow}>
+                          <Text style={[styles.rowCell, styles.rowId]}>
+                            {emp.id}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.rowName]}>
+                            {emp.name}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.rowEmail]}>
+                            {emp.email}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.rowDept]}>
+                            {emp.department}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.rowRole]}>
+                            {emp.role}
+                          </Text>
+                          <View style={[styles.rowCell, styles.rowStatusTbl]}>
+                            <View
+                              style={[
+                                styles.statusBadge,
+                                emp.status === "Active Mission"
+                                  ? styles.statusActiveMission
+                                  : emp.status === "On Leave"
+                                    ? styles.statusOnLeave
+                                    : styles.statusInOffice,
+                              ]}
+                            >
+                              <Text style={styles.statusBadgeText}>
+                                {emp.status}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* ATTENDANCE LOGS TAB */}
+              {activeTab === "Attendance Logs" && (
+                <View>
+                  <View style={styles.directoryHeader}>
+                    <Text style={styles.tableTitle}>
+                      Daily Attendance Ledger
+                    </Text>
+                    <Text style={styles.recordCount}>
+                      {attendanceLogs.length} Records
+                    </Text>
+                  </View>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                    <View style={styles.tableContainer}>
+                      <AttendanceHeader />
+                      {attendanceLogs.map((log) => (
+                        <View key={log.id} style={styles.tableRow}>
+                          <View style={[styles.rowCell, styles.attEmailCell]}>
+                            <View style={styles.employeeAvatar}>
+                              <Text style={styles.avatarText}>
+                                {log.email.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <View>
+                              <Text style={styles.employeeEmail}>
+                                {log.email}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={[styles.rowCell, styles.attStatusCell]}>
+                            {renderStatusPill(log.statusType, log.status)}
+                          </View>
+                          <Text style={[styles.rowCell, styles.attHoursCell]}>
+                            {log.workHours}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.attLoginCell]}>
+                            {log.loginTime}
+                          </Text>
+                          <View style={[styles.rowCell, styles.attTasksCell]}>
+                            {log.tasks !== "No tasks" ? (
+                              <View style={styles.tasksContainer}>
+                                <MaterialIcons
+                                  name="check-box"
+                                  size={16}
+                                  color={colors.emerald}
+                                />
+                                <Text style={styles.tasksText}>
+                                  {log.tasks}
+                                </Text>
+                              </View>
+                            ) : (
+                              <View style={styles.tasksContainer}>
+                                <MaterialIcons
+                                  name="close"
+                                  size={16}
+                                  color={colors.rose}
+                                />
+                                <Text style={styles.tasksTextNo}>
+                                  {log.tasks}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={[styles.rowCell, styles.attActionsCell]}>
+                            <TouchableOpacity
+                              onPress={() =>
+                                triggerToast(
+                                  `Viewing attendance log for ${log.email}`,
+                                )
+                              }
+                            >
+                              <Text style={styles.actionText}>View</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleDeleteLog(log.id, log.email)}
+                            >
+                              <Text
+                                style={[styles.actionText, styles.deleteText]}
+                              >
+                                Delete
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* LEAVE WORKFLOW TAB */}
+              {activeTab === "Leave Workflow" && (
+                <View>
+                  <View style={styles.directoryHeader}>
+                    <Text style={styles.tableTitle}>Leave Approvals</Text>
+                    <Text style={styles.recordCount}>
+                      {filteredLeaves.length} Records Found
+                    </Text>
+                  </View>
+
+                  {/* Leave Filters */}
+                  <View style={styles.leaveFilterContainer}>
+                    <View style={styles.searchContainer}>
+                      <MaterialIcons name="search" size={18} color="#9ca3af" />
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search records..."
+                        placeholderTextColor="#9ca3af"
+                        value={leaveSearch}
+                        onChangeText={setLeaveSearch}
+                      />
+                    </View>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={leaveStatusFilter}
+                        onValueChange={(itemValue) =>
+                          setLeaveStatusFilter(itemValue)
+                        }
+                        style={styles.filterPicker}
+                      >
+                        <Picker.Item label="All Status" value="ALL" />
+                        <Picker.Item label="APPROVED" value="APPROVED" />
+                        <Picker.Item label="REJECTED" value="REJECTED" />
+                        <Picker.Item label="PENDING" value="PENDING" />
+                      </Picker>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.exportButton}
+                      onPress={() =>
+                        triggerToast("Exporting leave records to CSV...")
+                      }
+                    >
+                      <MaterialIcons
+                        name="download"
+                        size={14}
+                        color={colors.emerald}
+                      />
+                      <Text style={styles.exportButtonText}>Export</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                    <View style={styles.tableContainer}>
+                      <LeaveHeader />
+                      {filteredLeaves.map((leave) => (
+                        <View key={leave.id} style={styles.tableRow}>
+                          <Text style={[styles.rowCell, styles.leaveCoachCell]}>
+                            {leave.coach}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.leaveTypeCell]}>
+                            {leave.type}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.leaveDatesCell]}>
+                            {leave.requestedDates}
+                          </Text>
+                          <Text style={[styles.rowCell, styles.leaveTakenCell]}>
+                            {leave.leavesTaken}
+                          </Text>
+                          <Text
+                            style={[styles.rowCell, styles.leaveRemainingCell]}
+                          >
+                            {leave.leavesRemaining}
+                          </Text>
+                          <View
+                            style={[styles.rowCell, styles.leaveStatusCell]}
+                          >
+                            {renderLeaveStatusPill(leave.status)}
+                          </View>
+                          <View
+                            style={[styles.rowCell, styles.leaveActionsCell]}
+                          >
+                            {leave.status === "PENDING" ? (
+                              <View style={styles.actionButtonsRow}>
+                                <TouchableOpacity
+                                  style={styles.approveButton}
+                                  onPress={() =>
+                                    handleApproveLeave(leave.id, leave.coach)
+                                  }
+                                >
+                                  <Text style={styles.approveButtonText}>
+                                    Approve
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.rejectButton}
+                                  onPress={() =>
+                                    handleRejectLeave(leave.id, leave.coach)
+                                  }
+                                >
+                                  <Text style={styles.rejectButtonText}>
+                                    Reject
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleResetLeave(leave.id, leave.coach)
+                                }
+                              >
+                                <Text style={styles.resetText}>Reset</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* SOP ACKNOWLEDGED REGISTERS TAB */}
+              {activeTab === "SOP acknowledged registers" && (
+                <View>
                   <Text style={styles.tableTitle}>
-                    Staff & Employee Directory
+                    Standard Operating Procedures Acknowledgment Log
                   </Text>
-                  <Text style={styles.recordCount}>
-                    {filteredEmployees.length} employees found
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.headerCell, styles.sopName]}>
+                      Employee
+                    </Text>
+                    <Text style={[styles.headerCell, styles.sopRole]}>
+                      Role
+                    </Text>
+                    <Text style={[styles.headerCell, styles.sopStatus]}>
+                      Safety Protocol Signed
+                    </Text>
+                  </View>
+                  {employees.map((emp) => (
+                    <View key={emp.id} style={styles.tableRow}>
+                      <Text style={[styles.rowCell, styles.sopNameCell]}>
+                        {emp.name}
+                      </Text>
+                      <Text style={[styles.rowCell, styles.sopRoleCell]}>
+                        {emp.role}
+                      </Text>
+                      <View style={[styles.rowCell, styles.sopStatusCell]}>
+                        <View
+                          style={[
+                            styles.sopBadge,
+                            emp.sopSigned
+                              ? styles.sopSigned
+                              : styles.sopPending,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.sopBadgeText,
+                              emp.sopSigned
+                                ? styles.sopSignedText
+                                : styles.sopPendingText,
+                            ]}
+                          >
+                            {emp.sopSigned ? "Acknowledged" : "Pending Signoff"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* HR REPORTS TAB */}
+              {activeTab === "HR Reports & headcount" && (
+                <View>
+                  <Text style={styles.tableTitle}>
+                    Headcount Distribution & Leave Trends
                   </Text>
+                  <View style={styles.reportContainer}>
+                    <Text style={styles.reportSubtitle}>
+                      Department Headcount Distribution
+                    </Text>
+                    <View style={styles.progressItem}>
+                      <Text style={styles.progressLabel}>Operations</Text>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressFill, { width: "60%" }]} />
+                      </View>
+                      <Text style={styles.progressValue}>140</Text>
+                    </View>
+                    <View style={styles.progressItem}>
+                      <Text style={styles.progressLabel}>Logistics</Text>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressFill, { width: "30%" }]} />
+                      </View>
+                      <Text style={styles.progressValue}>72</Text>
+                    </View>
+                    <View style={styles.progressItem}>
+                      <Text style={styles.progressLabel}>Education</Text>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressFill, { width: "10%" }]} />
+                      </View>
+                      <Text style={styles.progressValue}>24</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.sideInfoCard}>
+                    <Text style={styles.sideInfoTitle}>
+                      General Leave Balance Index
+                    </Text>
+                    <View style={styles.balanceRow}>
+                      <Text style={styles.balanceLabel}>
+                        Casual Leaves Balance
+                      </Text>
+                      <Text style={styles.balanceValue}>12 Days remaining</Text>
+                    </View>
+                    <View style={styles.balanceRow}>
+                      <Text style={styles.balanceLabel}>
+                        Sick Leaves Balance
+                      </Text>
+                      <Text style={styles.balanceValue}>8 Days remaining</Text>
+                    </View>
+                    <View style={styles.balanceRow}>
+                      <Text style={styles.balanceLabel}>
+                        Earned Leaves Balance
+                      </Text>
+                      <Text style={styles.balanceValue}>22 Days remaining</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Footer */}
+            <Footer />
+          </ScrollView>
+        </SafeAreaView>
+
+        {/* Add Employee Modal */}
+        <Modal
+          visible={showAddModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowAddModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  Register New Employee Record
+                </Text>
+                <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                  <MaterialIcons name="close" size={24} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalForm}>
+                <View>
+                  <Text style={styles.formLabel}>Employee Full Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. John Doe"
+                    placeholderTextColor="#9ca3af"
+                    value={newName}
+                    onChangeText={setNewName}
+                  />
                 </View>
 
-                {/* Filters */}
-                <View style={styles.filterContainer}>
-                  <View style={styles.searchContainer}>
-                    <MaterialIcons name="search" size={18} color="#9ca3af" />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search name, role, ID..."
-                      placeholderTextColor="#9ca3af"
-                      value={directorySearch}
-                      onChangeText={setDirectorySearch}
-                    />
-                  </View>
-                  <View style={styles.pickerWrapper}>
+                <View>
+                  <Text style={styles.formLabel}>Email *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. john@amanfoundation.org"
+                    placeholderTextColor="#9ca3af"
+                    value={newEmail}
+                    onChangeText={setNewEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Job Role / Title</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. Field Operations Associate"
+                    placeholderTextColor="#9ca3af"
+                    value={newRole}
+                    onChangeText={setNewRole}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Department</Text>
+                  <View style={styles.pickerContainer}>
                     <Picker
-                      selectedValue={directoryDept}
-                      onValueChange={(itemValue) => setDirectoryDept(itemValue)}
-                      style={styles.filterPicker}
+                      selectedValue={newDept}
+                      onValueChange={(itemValue) => setNewDept(itemValue)}
+                      style={styles.picker}
                     >
-                      <Picker.Item label="All Departments" value="All" />
                       <Picker.Item label="Operations" value="Operations" />
                       <Picker.Item label="Logistics" value="Logistics" />
                       <Picker.Item label="Education" value="Education" />
@@ -1068,494 +1591,59 @@ export default function HrEmployeeManagement() {
                       <Picker.Item label="Finance" value="Finance" />
                     </Picker>
                   </View>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={directoryStatus}
-                      onValueChange={(itemValue) =>
-                        setDirectoryStatus(itemValue)
-                      }
-                      style={styles.filterPicker}
-                    >
-                      <Picker.Item label="All Statuses" value="All" />
-                      <Picker.Item label="In Office" value="In Office" />
-                      <Picker.Item
-                        label="Active Mission"
-                        value="Active Mission"
-                      />
-                      <Picker.Item label="On Leave" value="On Leave" />
-                    </Picker>
-                  </View>
                 </View>
 
-                {/* Scrollable Table */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <View style={styles.tableContainer}>
-                    <TeamDirectoryHeader />
-                    {filteredEmployees.map((emp) => (
-                      <View key={emp.id} style={styles.tableRow}>
-                        <Text style={[styles.rowCell, styles.rowId]}>
-                          {emp.id}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.rowName]}>
-                          {emp.name}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.rowEmail]}>
-                          {emp.email}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.rowDept]}>
-                          {emp.department}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.rowRole]}>
-                          {emp.role}
-                        </Text>
-                        <View style={[styles.rowCell, styles.rowStatusTbl]}>
-                          <View
-                            style={[
-                              styles.statusBadge,
-                              emp.status === "Active Mission"
-                                ? styles.statusActiveMission
-                                : emp.status === "On Leave"
-                                  ? styles.statusOnLeave
-                                  : styles.statusInOffice,
-                            ]}
-                          >
-                            <Text style={styles.statusBadgeText}>
-                              {emp.status}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
-
-            {/* ATTENDANCE LOGS TAB - SCROLLABLE HORIZONTALLY */}
-            {activeTab === "Attendance Logs" && (
-              <View>
-                <View style={styles.directoryHeader}>
-                  <Text style={styles.tableTitle}>Daily Attendance Ledger</Text>
-                  <Text style={styles.recordCount}>
-                    {attendanceLogs.length} Records
-                  </Text>
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <View style={styles.tableContainer}>
-                    <AttendanceHeader />
-                    {attendanceLogs.map((log) => (
-                      <View key={log.id} style={styles.tableRow}>
-                        <View style={[styles.rowCell, styles.attEmailCell]}>
-                          <View style={styles.employeeAvatar}>
-                            <Text style={styles.avatarText}>
-                              {log.email.charAt(0).toUpperCase()}
-                            </Text>
-                          </View>
-                          <View>
-                            <Text style={styles.employeeEmail}>
-                              {log.email}
-                            </Text>
-                            <Text style={styles.employeeEmailSmall}>
-                              {log.email}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={[styles.rowCell, styles.attStatusCell]}>
-                          {renderStatusPill(log.statusType, log.status)}
-                        </View>
-                        <Text style={[styles.rowCell, styles.attHoursCell]}>
-                          {log.workHours}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.attLoginCell]}>
-                          {log.loginTime}
-                        </Text>
-                        <View style={[styles.rowCell, styles.attTasksCell]}>
-                          {log.tasks !== "No tasks" ? (
-                            <View style={styles.tasksContainer}>
-                              <MaterialIcons
-                                name="check-box"
-                                size={16}
-                                color={colors.emerald}
-                              />
-                              <Text style={styles.tasksText}>{log.tasks}</Text>
-                            </View>
-                          ) : (
-                            <View style={styles.tasksContainer}>
-                              <MaterialIcons
-                                name="close"
-                                size={16}
-                                color={colors.rose}
-                              />
-                              <Text style={styles.tasksTextNo}>
-                                {log.tasks}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <View style={[styles.rowCell, styles.attActionsCell]}>
-                          <TouchableOpacity
-                            onPress={() =>
-                              triggerToast(
-                                `Viewing attendance log for ${log.email}`,
-                              )
-                            }
-                          >
-                            <Text style={styles.actionText}>View</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleDeleteLog(log.id, log.email)}
-                          >
-                            <Text
-                              style={[styles.actionText, styles.deleteText]}
-                            >
-                              Delete
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
-
-            {/* LEAVE WORKFLOW TAB - SCROLLABLE HORIZONTALLY */}
-            {activeTab === "Leave Workflow" && (
-              <View>
-                <View style={styles.directoryHeader}>
-                  <Text style={styles.tableTitle}>Leave Approvals</Text>
-                  <Text style={styles.recordCount}>
-                    {filteredLeaves.length} Records Found
-                  </Text>
-                </View>
-
-                {/* Leave Filters */}
-                <View style={styles.leaveFilterContainer}>
-                  <View style={styles.searchContainer}>
-                    <MaterialIcons name="search" size={18} color="#9ca3af" />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search records..."
-                      placeholderTextColor="#9ca3af"
-                      value={leaveSearch}
-                      onChangeText={setLeaveSearch}
-                    />
-                  </View>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={leaveStatusFilter}
-                      onValueChange={(itemValue) =>
-                        setLeaveStatusFilter(itemValue)
-                      }
-                      style={styles.filterPicker}
-                    >
-                      <Picker.Item label="All Status" value="ALL" />
-                      <Picker.Item label="APPROVED" value="APPROVED" />
-                      <Picker.Item label="REJECTED" value="REJECTED" />
-                      <Picker.Item label="PENDING" value="PENDING" />
-                    </Picker>
-                  </View>
+                <View style={styles.formButtons}>
                   <TouchableOpacity
-                    style={styles.exportButton}
-                    onPress={() =>
-                      triggerToast("Exporting leave records to CSV...")
-                    }
+                    onPress={() => setShowAddModal(false)}
+                    style={styles.cancelButton}
                   >
-                    <MaterialIcons
-                      name="download"
-                      size={14}
-                      color={colors.emerald}
-                    />
-                    <Text style={styles.exportButtonText}>Export</Text>
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleAddEmployee}
+                    style={styles.submitButton}
+                  >
+                    <Text style={styles.submitButtonText}>Add Employee</Text>
                   </TouchableOpacity>
                 </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                  <View style={styles.tableContainer}>
-                    <LeaveHeader />
-                    {filteredLeaves.map((leave) => (
-                      <View key={leave.id} style={styles.tableRow}>
-                        <Text style={[styles.rowCell, styles.leaveCoachCell]}>
-                          {leave.coach}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.leaveTypeCell]}>
-                          {leave.type}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.leaveDatesCell]}>
-                          {leave.requestedDates}
-                        </Text>
-                        <Text style={[styles.rowCell, styles.leaveTakenCell]}>
-                          {leave.leavesTaken}
-                        </Text>
-                        <Text
-                          style={[styles.rowCell, styles.leaveRemainingCell]}
-                        >
-                          {leave.leavesRemaining}
-                        </Text>
-                        <View style={[styles.rowCell, styles.leaveStatusCell]}>
-                          {renderLeaveStatusPill(leave.status)}
-                        </View>
-                        <View style={[styles.rowCell, styles.leaveActionsCell]}>
-                          {leave.status === "PENDING" ? (
-                            <View style={styles.actionButtonsRow}>
-                              <TouchableOpacity
-                                style={styles.approveButton}
-                                onPress={() =>
-                                  handleApproveLeave(leave.id, leave.coach)
-                                }
-                              >
-                                <Text style={styles.approveButtonText}>
-                                  Approve
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.rejectButton}
-                                onPress={() =>
-                                  handleRejectLeave(leave.id, leave.coach)
-                                }
-                              >
-                                <Text style={styles.rejectButtonText}>
-                                  Reject
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                          ) : (
-                            <TouchableOpacity
-                              onPress={() =>
-                                handleResetLeave(leave.id, leave.coach)
-                              }
-                            >
-                              <Text style={styles.resetText}>Reset</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
-
-            {/* SOP ACKNOWLEDGED REGISTERS TAB */}
-            {activeTab === "SOP acknowledged registers" && (
-              <View>
-                <Text style={styles.tableTitle}>
-                  Standard Operating Procedures Acknowledgment Log
-                </Text>
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.headerCell, styles.sopName]}>
-                    Employee
-                  </Text>
-                  <Text style={[styles.headerCell, styles.sopRole]}>Role</Text>
-                  <Text style={[styles.headerCell, styles.sopStatus]}>
-                    Safety Protocol Signed
-                  </Text>
-                </View>
-                {employees.map((emp) => (
-                  <View key={emp.id} style={styles.tableRow}>
-                    <Text style={[styles.rowCell, styles.sopNameCell]}>
-                      {emp.name}
-                    </Text>
-                    <Text style={[styles.rowCell, styles.sopRoleCell]}>
-                      {emp.role}
-                    </Text>
-                    <View style={[styles.rowCell, styles.sopStatusCell]}>
-                      <View
-                        style={[
-                          styles.sopBadge,
-                          emp.sopSigned ? styles.sopSigned : styles.sopPending,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.sopBadgeText,
-                            emp.sopSigned
-                              ? styles.sopSignedText
-                              : styles.sopPendingText,
-                          ]}
-                        >
-                          {emp.sopSigned ? "Acknowledged" : "Pending Signoff"}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* HR REPORTS TAB */}
-            {activeTab === "HR Reports & headcount" && (
-              <View>
-                <Text style={styles.tableTitle}>
-                  Headcount Distribution & Leave Trends
-                </Text>
-                <View style={styles.reportContainer}>
-                  <Text style={styles.reportSubtitle}>
-                    Department Headcount Distribution
-                  </Text>
-                  <View style={styles.progressItem}>
-                    <Text style={styles.progressLabel}>Operations</Text>
-                    <View style={styles.progressBarBg}>
-                      <View style={[styles.progressFill, { width: "60%" }]} />
-                    </View>
-                    <Text style={styles.progressValue}>140</Text>
-                  </View>
-                  <View style={styles.progressItem}>
-                    <Text style={styles.progressLabel}>Logistics</Text>
-                    <View style={styles.progressBarBg}>
-                      <View style={[styles.progressFill, { width: "30%" }]} />
-                    </View>
-                    <Text style={styles.progressValue}>72</Text>
-                  </View>
-                  <View style={styles.progressItem}>
-                    <Text style={styles.progressLabel}>Education</Text>
-                    <View style={styles.progressBarBg}>
-                      <View style={[styles.progressFill, { width: "10%" }]} />
-                    </View>
-                    <Text style={styles.progressValue}>24</Text>
-                  </View>
-                </View>
-
-                {/* Side Info */}
-                <View style={styles.sideInfoCard}>
-                  <Text style={styles.sideInfoTitle}>
-                    General Leave Balance Index
-                  </Text>
-                  <View style={styles.balanceRow}>
-                    <Text style={styles.balanceLabel}>
-                      Casual Leaves Balance
-                    </Text>
-                    <Text style={styles.balanceValue}>12 Days remaining</Text>
-                  </View>
-                  <View style={styles.balanceRow}>
-                    <Text style={styles.balanceLabel}>Sick Leaves Balance</Text>
-                    <Text style={styles.balanceValue}>8 Days remaining</Text>
-                  </View>
-                  <View style={styles.balanceRow}>
-                    <Text style={styles.balanceLabel}>
-                      Earned Leaves Balance
-                    </Text>
-                    <Text style={styles.balanceValue}>22 Days remaining</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Footer */}
-          <Footer />
-        </ScrollView>
-      </SafeAreaView>
-
-      {/* Add Employee Modal */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Register New Employee Record
-              </Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <MaterialIcons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
+              </ScrollView>
             </View>
-
-            <ScrollView style={styles.modalForm}>
-              <View>
-                <Text style={styles.formLabel}>Employee Full Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. John Doe"
-                  placeholderTextColor="#9ca3af"
-                  value={newName}
-                  onChangeText={setNewName}
-                />
-              </View>
-
-              <View>
-                <Text style={styles.formLabel}>Job Role / Title *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Field Operations Associate"
-                  placeholderTextColor="#9ca3af"
-                  value={newRole}
-                  onChangeText={setNewRole}
-                />
-              </View>
-
-              <View>
-                <Text style={styles.formLabel}>Department</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={newDept}
-                    onValueChange={(itemValue) => setNewDept(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Operations" value="Operations" />
-                    <Picker.Item label="Logistics" value="Logistics" />
-                    <Picker.Item label="Education" value="Education" />
-                    <Picker.Item label="HR" value="HR" />
-                    <Picker.Item label="Finance" value="Finance" />
-                  </Picker>
-                </View>
-              </View>
-
-              <View>
-                <Text style={styles.formLabel}>Deployment Status</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={newStatus}
-                    onValueChange={(itemValue) => setNewStatus(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="In Office" value="In Office" />
-                    <Picker.Item
-                      label="Active Mission"
-                      value="Active Mission"
-                    />
-                    <Picker.Item label="On Leave" value="On Leave" />
-                  </Picker>
-                </View>
-              </View>
-
-              <View style={styles.formButtons}>
-                <TouchableOpacity
-                  onPress={() => setShowAddModal(false)}
-                  style={styles.cancelButton}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAddEmployee}
-                  style={styles.submitButton}
-                >
-                  <Text style={styles.submitButtonText}>Add Employee</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* Toast Notification */}
-      {showToast && (
-        <View style={styles.toast}>
-          <MaterialIcons name="check-circle" size={18} color={colors.emerald} />
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </View>
-      )}
+        {/* Toast Notification */}
+        {showToast && (
+          <View style={styles.toast}>
+            <MaterialIcons
+              name="check-circle"
+              size={18}
+              color={colors.emerald}
+            />
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        )}
       </View>
-    </RoleGuard>
+    </RouteGuard>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
   // ==================== SIDEBAR STYLES ====================
   overlay: {
     position: "absolute",
@@ -1655,7 +1743,6 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     marginLeft: 10,
   },
-  // Authentication dropdown styles
   menuDivider: {
     flexDirection: "row",
     alignItems: "center",
@@ -2037,10 +2124,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     color: colors.onSurface,
-  },
-  employeeEmailSmall: {
-    fontSize: 10,
-    color: colors.onSurfaceVariant,
   },
 
   // Status Pill

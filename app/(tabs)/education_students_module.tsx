@@ -1,8 +1,12 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -23,12 +27,15 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 
 const { width, height } = Dimensions.get("window");
 
-// Types
+// ============================================
+// TYPES
+// ============================================
 interface Student {
+  id: string;
   initials: string;
   bgClass: string;
   name: string;
-  id: string;
+  studentId: string;
   school: string;
   grade: string;
   gradeGroup: string;
@@ -39,9 +46,27 @@ interface Student {
   hasGlow: boolean;
   status: string;
   statusClass: string;
+  email?: string;
+  phone?: string;
+  enrollmentDate?: string;
 }
 
-// Mock Data
+interface StudentResponse {
+  id: string;
+  name: string;
+  email: string;
+  school: string;
+  grade: string;
+  attendance: number;
+  status: string;
+  studentId?: string;
+  phone?: string;
+  enrollmentDate?: string;
+}
+
+// ============================================
+// MOCK SCHOOLS
+// ============================================
 const DEFAULT_SCHOOLS = [
   { name: "Oakridge Academy, Kalgachia" },
   { name: "Kalgachia Public School, Kalgachia" },
@@ -50,74 +75,11 @@ const DEFAULT_SCHOOLS = [
   { name: "Sawpur Elementary, Sawpur" },
 ];
 
-const DEFAULT_STUDENTS: Student[] = [
-  {
-    initials: "AK",
-    bgClass: "#d1fae5",
-    name: "Aarav Kumar",
-    id: "STU-2026-001",
-    school: "Oakridge Academy, Kalgachia",
-    grade: "Grade 8",
-    gradeGroup: "Middle (6-8)",
-    district: "Kalgachia",
-    attendance: 95,
-    attendanceColor: "#059669",
-    barColor: "#059669",
-    hasGlow: true,
-    status: "Excelling",
-    statusClass: "#d1fae5",
-  },
-  {
-    initials: "SS",
-    bgClass: "#fed7aa",
-    name: "Sneha Sharma",
-    id: "STU-2026-002",
-    school: "Kalgachia Public School, Kalgachia",
-    grade: "Grade 5",
-    gradeGroup: "Primary (1-5)",
-    district: "Kalgachia",
-    attendance: 82,
-    attendanceColor: "#6B7280",
-    barColor: "#6B7280",
-    hasGlow: false,
-    status: "On Track",
-    statusClass: "#d1fae5",
-  },
-  {
-    initials: "RV",
-    bgClass: "#ddd6fe",
-    name: "Rohan Verma",
-    id: "STU-2026-003",
-    school: "Bartari Primary School, Bartari",
-    grade: "Grade 3",
-    gradeGroup: "Primary (1-5)",
-    district: "Bartari",
-    attendance: 65,
-    attendanceColor: "#ea580c",
-    barColor: "#ea580c",
-    hasGlow: false,
-    status: "Needs Attention",
-    statusClass: "#fee2e2",
-  },
-  {
-    initials: "PN",
-    bgClass: "#e5e7eb",
-    name: "Priya Nair",
-    id: "STU-2026-004",
-    school: "Digjani High School, Digjani",
-    grade: "Grade 10",
-    gradeGroup: "High (9-10)",
-    district: "Digjani",
-    attendance: 98,
-    attendanceColor: "#059669",
-    barColor: "#059669",
-    hasGlow: true,
-    status: "Excelling",
-    statusClass: "#d1fae5",
-  },
-];
-
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const StudentsModule = () => {
+  const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeFilter, setGradeFilter] = useState("All Grades");
@@ -125,7 +87,14 @@ const StudentsModule = () => {
   const [schoolFilter, setSchoolFilter] = useState("All Schools");
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [students, setStudents] = useState(DEFAULT_STUDENTS);
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    excellent: 0,
+    onTrack: 0,
+    needsAttention: 0,
+  });
 
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
@@ -153,6 +122,174 @@ const StudentsModule = () => {
   const [newStudentAttendance, setNewStudentAttendance] = useState("");
   const [newStudentStatus, setNewStudentStatus] = useState("On Track");
 
+  // ============================================
+  // FETCH STUDENTS
+  // ============================================
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const data = await api.get<StudentResponse[]>("/api/students");
+
+      if (data && data.length > 0) {
+        const transformedStudents: Student[] = data.map((s) => {
+          const att = s.attendance || 0;
+          const attendanceColor =
+            att > 85 ? "#059669" : att > 70 ? "#6B7280" : "#ea580c";
+          const barColor =
+            att > 85 ? "#059669" : att > 70 ? "#6B7280" : "#ea580c";
+          const hasGlow = att > 90;
+
+          const statusColors: { [key: string]: string } = {
+            "On Track": "#d1fae5",
+            Satisfactory: "#f3f4f6",
+            "Needs Attention": "#fee2e2",
+            Excelling: "#d1fae5",
+          };
+
+          const initials =
+            s.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .substring(0, 2) || "ST";
+
+          return {
+            id: s.id,
+            initials,
+            bgClass: ["#d1fae5", "#fed7aa", "#ddd6fe", "#e5e7eb"][
+              s.name.length % 4
+            ],
+            name: s.name,
+            studentId: s.studentId || `STU-${Date.now().toString().slice(-6)}`,
+            school: s.school || "Not Assigned",
+            grade: s.grade || "Grade 1",
+            gradeGroup: getGradeGroup(s.grade || "Grade 1"),
+            district: s.school?.split(",")[0]?.trim() || "Unknown",
+            attendance: att,
+            attendanceColor,
+            barColor,
+            hasGlow,
+            status: s.status || "On Track",
+            statusClass: statusColors[s.status || "On Track"] || "#f3f4f6",
+            email: s.email,
+            phone: s.phone,
+            enrollmentDate: s.enrollmentDate,
+          };
+        });
+
+        setStudents(transformedStudents);
+        updateStats(transformedStudents);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Students fetch error:", err.message);
+      }
+      // Fallback data
+      const fallbackStudents: Student[] = [
+        {
+          initials: "AK",
+          bgClass: "#d1fae5",
+          name: "Aarav Kumar",
+          id: "1",
+          studentId: "STU-2026-001",
+          school: "Oakridge Academy, Kalgachia",
+          grade: "Grade 8",
+          gradeGroup: "Middle (6-8)",
+          district: "Kalgachia",
+          attendance: 95,
+          attendanceColor: "#059669",
+          barColor: "#059669",
+          hasGlow: true,
+          status: "Excelling",
+          statusClass: "#d1fae5",
+        },
+        {
+          initials: "SS",
+          bgClass: "#fed7aa",
+          name: "Sneha Sharma",
+          id: "2",
+          studentId: "STU-2026-002",
+          school: "Kalgachia Public School, Kalgachia",
+          grade: "Grade 5",
+          gradeGroup: "Primary (1-5)",
+          district: "Kalgachia",
+          attendance: 82,
+          attendanceColor: "#6B7280",
+          barColor: "#6B7280",
+          hasGlow: false,
+          status: "On Track",
+          statusClass: "#d1fae5",
+        },
+        {
+          initials: "RV",
+          bgClass: "#ddd6fe",
+          name: "Rohan Verma",
+          id: "3",
+          studentId: "STU-2026-003",
+          school: "Bartari Primary School, Bartari",
+          grade: "Grade 3",
+          gradeGroup: "Primary (1-5)",
+          district: "Bartari",
+          attendance: 65,
+          attendanceColor: "#ea580c",
+          barColor: "#ea580c",
+          hasGlow: false,
+          status: "Needs Attention",
+          statusClass: "#fee2e2",
+        },
+        {
+          initials: "PN",
+          bgClass: "#e5e7eb",
+          name: "Priya Nair",
+          id: "4",
+          studentId: "STU-2026-004",
+          school: "Digjani High School, Digjani",
+          grade: "Grade 10",
+          gradeGroup: "High (9-10)",
+          district: "Digjani",
+          attendance: 98,
+          attendanceColor: "#059669",
+          barColor: "#059669",
+          hasGlow: true,
+          status: "Excelling",
+          statusClass: "#d1fae5",
+        },
+      ];
+      setStudents(fallbackStudents);
+      updateStats(fallbackStudents);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const getGradeGroup = (grade: string) => {
+    const num = parseInt(grade.split(" ")[1]);
+    if (num <= 5) return "Primary (1-5)";
+    if (num <= 8) return "Middle (6-8)";
+    return "High (9-10)";
+  };
+
+  const updateStats = (studentList: Student[]) => {
+    setStats({
+      total: studentList.length,
+      excellent: studentList.filter((s) => s.status === "Excelling").length,
+      onTrack: studentList.filter(
+        (s) => s.status === "On Track" || s.status === "Satisfactory",
+      ).length,
+      needsAttention: studentList.filter((s) => s.status === "Needs Attention")
+        .length,
+    });
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -167,6 +304,16 @@ const StudentsModule = () => {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -201,7 +348,7 @@ const StudentsModule = () => {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
@@ -235,63 +382,65 @@ const StudentsModule = () => {
     outputRange: ["0deg", "180deg"],
   });
 
-  const handleAddStudent = () => {
+  // ============================================
+  // CRUD OPERATIONS
+  // ============================================
+  const handleAddStudent = async () => {
     if (!newStudentName || !newStudentSchool || !newStudentAttendance) {
       Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
-    const initials =
-      newStudentName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2) || "ST";
-    const bgColors = ["#d1fae5", "#fed7aa", "#ddd6fe", "#e5e7eb"];
-    const bgClass = bgColors[newStudentName.length % bgColors.length];
+    try {
+      const newStudentData = {
+        name: newStudentName,
+        school: newStudentSchool,
+        grade: newStudentGrade,
+        attendance: parseInt(newStudentAttendance),
+        status: newStudentStatus,
+        studentId: newStudentId || undefined,
+      };
 
-    const att = parseInt(newStudentAttendance);
-    const attendanceColor =
-      att > 85 ? "#059669" : att > 70 ? "#6B7280" : "#ea580c";
-    const barColor = att > 85 ? "#059669" : att > 70 ? "#6B7280" : "#ea580c";
-    const hasGlow = att > 90;
+      const response = await api.post("/api/students", newStudentData);
 
-    const statusColors: { [key: string]: string } = {
-      "On Track": "#d1fae5",
-      Satisfactory: "#f3f4f6",
-      "Needs Attention": "#fee2e2",
-      Excelling: "#d1fae5",
-    };
+      if (response) {
+        Alert.alert("Success", "Student added successfully");
+        setNewStudentName("");
+        setNewStudentId("");
+        setNewStudentSchool("");
+        setNewStudentGrade("Grade 8");
+        setNewStudentGradeGroup("Middle (6-8)");
+        setNewStudentAttendance("");
+        setNewStudentStatus("On Track");
+        setShowAddModal(false);
+        fetchStudents();
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        Alert.alert("Error", err.message);
+      }
+    }
+  };
 
-    const newStudent: Student = {
-      initials,
-      bgClass,
-      name: newStudentName,
-      id: newStudentId || `STU-2026-${Math.floor(100 + Math.random() * 900)}`,
-      school: newStudentSchool,
-      grade: newStudentGrade,
-      gradeGroup: newStudentGradeGroup,
-      district:
-        newStudentSchool.split(",")[0].trim().split(" ")[0] || "Kalgachia",
-      attendance: att,
-      attendanceColor,
-      barColor,
-      hasGlow,
-      status: newStudentStatus,
-      statusClass: statusColors[newStudentStatus] || "#f3f4f6",
-    };
-
-    setStudents([newStudent, ...students]);
-    setNewStudentName("");
-    setNewStudentId("");
-    setNewStudentSchool("");
-    setNewStudentGrade("Grade 8");
-    setNewStudentGradeGroup("Middle (6-8)");
-    setNewStudentAttendance("");
-    setNewStudentStatus("On Track");
-    setShowAddModal(false);
-    Alert.alert("Success", "Student added successfully");
+  const handleDeleteStudent = (id: string, name: string) => {
+    Alert.alert("Delete Student", `Are you sure you want to delete ${name}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.del(`/api/students/${id}`);
+            Alert.alert("Success", "Student deleted successfully");
+            fetchStudents();
+          } catch (err) {
+            if (err instanceof ApiError) {
+              Alert.alert("Error", err.message);
+            }
+          }
+        },
+      },
+    ]);
   };
 
   const clearFilters = () => {
@@ -303,14 +452,17 @@ const StudentsModule = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+    fetchStudents();
   };
 
+  // ============================================
+  // FILTERS
+  // ============================================
   const filteredStudents = students.filter((s) => {
     const matchesSearch =
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.school.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchQuery.toLowerCase());
+      s.studentId.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesGrade =
       gradeFilter === "All Grades" || s.gradeGroup === gradeFilter;
@@ -346,6 +498,9 @@ const StudentsModule = () => {
     ...new Set(students.map((s) => s.school)),
   ];
 
+  // ============================================
+  // COMPONENTS
+  // ============================================
   const StatCard = ({ title, value, trend }: any) => (
     <View style={styles.statCard}>
       <Text style={styles.statTitle}>{title}</Text>
@@ -401,749 +556,889 @@ const StudentsModule = () => {
     </Modal>
   );
 
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.loadingText}>Loading students...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        <View style={styles.brandContainer}>
-          <View style={styles.brandIcon}>
-            <Ionicons name="business-outline" size={22} color="#fff" />
-          </View>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
 
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
-                  Students Directory
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Progress Reports</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <View style={styles.brandIcon}>
+                <Ionicons name="business-outline" size={22} color="#fff" />
+              </View>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
 
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-              <Ionicons name="menu" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Impact Portal</Text>
-          </View>
-          <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
+            >
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
+
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
+                  >
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemActive]}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#047857" />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextActive]}
+                    >
+                      Students Directory
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Progress Reports</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
             >
               <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#6B7280"
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
               />
+              <Text style={styles.menuText}>Admin & Access</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
-            >
-              <Ionicons name="settings-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.avatar}
-              onPress={() => router.push("/profile")}
-            >
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatarImage}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          horizontal={false}
-        >
-          {/* Back Link */}
-          <TouchableOpacity
-            style={styles.backLink}
-            onPress={() => router.push("/education_management_hub")}
-          >
-            <Icon name="arrow-back" size={20} color="#64748b" />
-            <Text style={styles.backLinkText}>Back to Education Hub</Text>
-          </TouchableOpacity>
-
-          {/* Header Section */}
-          <View style={styles.headerSection}>
-            <Text style={styles.mainTitle}>Students Directory</Text>
-            <Text style={styles.subtitle}>
-              Manage enrolled students, track academic progress, and monitor
-              school linkages across all program areas.
-            </Text>
-          </View>
-
-          {/* Action Bar */}
-          <View style={styles.actionBar}>
-            <View style={styles.searchContainer}>
-              <Icon name="search" size={20} color="#9ca3af" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search students..."
-                placeholderTextColor="#9ca3af"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+            {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
             </View>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.exportButton}>
-                <Icon name="download" size={18} color="#374151" />
-                <Text style={styles.exportButtonText}>Export</Text>
-              </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <View>
               <TouchableOpacity
-                onPress={() => setShowAddModal(true)}
-                style={styles.addButton}
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
               >
-                <Icon name="add" size={18} color="white" />
-                <Text style={styles.addButtonText}>Add Student</Text>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
               </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* Stats and Filters */}
-          <View style={styles.statsFiltersContainer}>
-            <StatCard title="Total Enrolled" value="4,285" trend="+12%" />
-
-            <View style={styles.filtersContainer}>
-              <Text style={styles.filtersLabel}>Filters</Text>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.filterScroll}
-              >
-                <TouchableOpacity
-                  onPress={() => setShowGradePicker(true)}
-                  style={styles.filterButton}
-                >
-                  <Text style={styles.filterButtonText}>{gradeFilter}</Text>
-                  <Icon name="expand-more" size={18} color="#9ca3af" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setShowPerformancePicker(true)}
-                  style={styles.filterButton}
-                >
-                  <Text style={styles.filterButtonText}>
-                    {performanceFilter}
-                  </Text>
-                  <Icon name="expand-more" size={18} color="#9ca3af" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setShowSchoolPicker(true)}
-                  style={styles.filterButton}
-                >
-                  <Text style={styles.filterButtonText}>
-                    {schoolFilter.length > 20
-                      ? schoolFilter.substring(0, 20) + "..."
-                      : schoolFilter}
-                  </Text>
-                  <Icon name="expand-more" size={18} color="#9ca3af" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={clearFilters}
-                  style={styles.clearButton}
-                >
-                  <Text style={styles.clearButtonText}>Clear Filters</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </View>
-
-          {/* Students Table - Using FlatList for better scrolling */}
-          <View style={styles.tableContainer}>
-            {/* Table Header */}
-            <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, styles.studentInfoCell]}>
-                Student Info
-              </Text>
-              <Text style={[styles.headerCell, styles.schoolCell]}>
-                School Linkage
-              </Text>
-              <Text style={[styles.headerCell, styles.progressCell]}>
-                Academic Progress
-              </Text>
-              <Text style={[styles.headerCell, styles.actionsCell]}>
-                Actions
-              </Text>
-            </View>
-
-            {/* Table Rows */}
-            <FlatList
-              data={filteredStudents}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.tableRow}>
-                  {/* Student Info Column */}
-                  <View style={[styles.rowCell, styles.studentInfoCell]}>
-                    <View style={styles.studentInfoContainer}>
-                      <View
-                        style={[
-                          styles.initialsCircle,
-                          { backgroundColor: item.bgClass },
-                        ]}
-                      >
-                        <Text style={styles.initialsCircleText}>
-                          {item.initials}
-                        </Text>
-                      </View>
-                      <View style={styles.studentTextContainer}>
-                        <Text style={styles.studentNameText}>{item.name}</Text>
-                        <Text style={styles.studentIdText}>ID: {item.id}</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* School Linkage Column */}
-                  <View style={[styles.rowCell, styles.schoolCell]}>
-                    <Text style={styles.schoolNameText} numberOfLines={2}>
-                      {item.school}
-                    </Text>
-                    <Text style={styles.gradeText}>
-                      {item.grade} • {item.district}
-                    </Text>
-                  </View>
-
-                  {/* Academic Progress Column */}
-                  <View style={[styles.rowCell, styles.progressCell]}>
-                    <View style={styles.attendanceContainer}>
-                      <View style={styles.attendanceHeaderRow}>
-                        <Text style={styles.attendanceLabelText}>
-                          Attendance
-                        </Text>
-                        <Text
-                          style={[
-                            styles.attendancePercentText,
-                            { color: item.attendanceColor },
-                          ]}
-                        >
-                          {item.attendance}%
-                        </Text>
-                      </View>
-                      <View style={styles.progressBarWrapper}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${item.attendance}%`,
-                              backgroundColor: item.barColor,
-                            },
-                          ]}
-                        />
-                        {item.hasGlow && <View style={styles.progressGlow} />}
-                      </View>
-                      <View
-                        style={[
-                          styles.statusBadgeWrapper,
-                          { backgroundColor: item.statusClass },
-                        ]}
-                      >
-                        <Text style={styles.statusBadgeText}>
-                          {item.status}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Actions Column */}
-                  <View style={[styles.rowCell, styles.actionsCell]}>
-                    <TouchableOpacity
-                      style={styles.viewProfileBtn}
-                      onPress={() => Alert.alert("View Profile", item.name)}
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color="#ef4444"
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
                     >
-                      <Text style={styles.viewProfileBtnText}>
-                        View Profile
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
-              ListEmptyComponent={() => (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No student records match the selected filters.
-                  </Text>
-                </View>
-              )}
-              scrollEnabled={false}
-            />
-          </View>
+            </View>
+          </ScrollView>
+        </Animated.View>
 
-          {/* Pagination */}
-          <View style={styles.paginationContainer}>
-            <Text style={styles.paginationInfo}>
-              Showing {filteredStudents.length} of {students.length} entries
-            </Text>
-            <View style={styles.paginationButtons}>
-              <TouchableOpacity style={styles.paginationButton}>
-                <Icon name="chevron-left" size={20} color="#6B7280" />
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+                <Ionicons name="menu" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Impact Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#6B7280"
+                />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.paginationButton, styles.paginationButtonActive]}
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
               >
-                <Text style={styles.paginationButtonActiveText}>1</Text>
+                <Ionicons name="settings-outline" size={22} color="#6B7280" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.paginationButton}>
-                <Text style={styles.paginationButtonText}>2</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.paginationButton}>
-                <Text style={styles.paginationButtonText}>3</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.paginationButton}>
-                <Icon name="chevron-right" size={20} color="#6B7280" />
+              <TouchableOpacity
+                style={styles.avatar}
+                onPress={() => router.push("/profile")}
+              >
+                <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatarImage}
+                />
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
 
-        {/* Filter Modals */}
-        <FilterPickerModal
-          visible={showGradePicker}
-          onClose={() => setShowGradePicker(false)}
-          items={gradeGroups}
-          selected={gradeFilter}
-          onSelect={setGradeFilter}
-          title="Select Grade"
-        />
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            horizontal={false}
+          >
+            {/* Back Link */}
+            <TouchableOpacity
+              style={styles.backLink}
+              onPress={() => router.push("/education_management_hub")}
+            >
+              <Icon name="arrow-back" size={20} color="#64748b" />
+              <Text style={styles.backLinkText}>Back to Education Hub</Text>
+            </TouchableOpacity>
 
-        <FilterPickerModal
-          visible={showPerformancePicker}
-          onClose={() => setShowPerformancePicker(false)}
-          items={performanceOptions}
-          selected={performanceFilter}
-          onSelect={setPerformanceFilter}
-          title="Select Performance"
-        />
+            {/* Header Section */}
+            <View style={styles.headerSection}>
+              <Text style={styles.mainTitle}>Students Directory</Text>
+              <Text style={styles.subtitle}>
+                Manage enrolled students, track academic progress, and monitor
+                school linkages across all program areas.
+              </Text>
+            </View>
 
-        <FilterPickerModal
-          visible={showSchoolPicker}
-          onClose={() => setShowSchoolPicker(false)}
-          items={schoolOptions}
-          selected={schoolFilter}
-          onSelect={setSchoolFilter}
-          title="Select School"
-        />
-
-        {/* Add Student Modal */}
-        <Modal
-          visible={showAddModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.addModalContent}>
-              <View style={styles.addModalHeader}>
-                <Text style={styles.addModalTitle}>Add New Student Record</Text>
-                <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                  <Icon name="close" size={24} color="#64748b" />
+            {/* Action Bar */}
+            <View style={styles.actionBar}>
+              <View style={styles.searchContainer}>
+                <Icon name="search" size={20} color="#9ca3af" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search students..."
+                  placeholderTextColor="#9ca3af"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.exportButton}>
+                  <Icon name="download" size={18} color="#374151" />
+                  <Text style={styles.exportButtonText}>Export</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowAddModal(true)}
+                  style={styles.addButton}
+                >
+                  <Icon name="add" size={18} color="white" />
+                  <Text style={styles.addButtonText}>Add Student</Text>
                 </TouchableOpacity>
               </View>
+            </View>
 
-              <ScrollView style={styles.formContainer}>
-                <View>
-                  <Text style={styles.formLabel}>Student Full Name *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="e.g. Aarav Kumar"
-                    placeholderTextColor="#9ca3af"
-                    value={newStudentName}
-                    onChangeText={setNewStudentName}
-                  />
+            {/* Stats and Filters */}
+            <View style={styles.statsFiltersContainer}>
+              <View style={styles.statsGrid}>
+                <View style={[styles.statCard, styles.statCardGreen]}>
+                  <Text style={[styles.statTitle, styles.statTitleWhite]}>
+                    Total
+                  </Text>
+                  <Text style={[styles.statValue, styles.statValueWhite]}>
+                    {stats.total}
+                  </Text>
                 </View>
-
-                <View>
-                  <Text style={styles.formLabel}>Student ID (Optional)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="e.g. STU-2026-101 (Leave blank to auto-generate)"
-                    placeholderTextColor="#9ca3af"
-                    value={newStudentId}
-                    onChangeText={setNewStudentId}
-                  />
+                <View style={[styles.statCard, styles.statCardBlue]}>
+                  <Text style={[styles.statTitle, styles.statTitleWhite]}>
+                    Excellent
+                  </Text>
+                  <Text style={[styles.statValue, styles.statValueWhite]}>
+                    {stats.excellent}
+                  </Text>
                 </View>
-
-                <View>
-                  <Text style={styles.formLabel}>Partner School Linkage *</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={newStudentSchool}
-                      onValueChange={(itemValue) =>
-                        setNewStudentSchool(itemValue)
-                      }
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="Select partner school..." value="" />
-                      {DEFAULT_SCHOOLS.map((sch) => (
-                        <Picker.Item
-                          key={sch.name}
-                          label={sch.name}
-                          value={sch.name}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                <View style={[styles.statCard, styles.statCardOrange]}>
+                  <Text style={[styles.statTitle, styles.statTitleWhite]}>
+                    On Track
+                  </Text>
+                  <Text style={[styles.statValue, styles.statValueWhite]}>
+                    {stats.onTrack}
+                  </Text>
                 </View>
+                <View style={[styles.statCard, styles.statCardRed]}>
+                  <Text style={[styles.statTitle, styles.statTitleWhite]}>
+                    Needs Attention
+                  </Text>
+                  <Text style={[styles.statValue, styles.statValueWhite]}>
+                    {stats.needsAttention}
+                  </Text>
+                </View>
+              </View>
 
-                <View style={styles.row}>
-                  <View style={styles.halfField}>
-                    <Text style={styles.formLabel}>Grade Group</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={newStudentGradeGroup}
-                        onValueChange={(itemValue) =>
-                          setNewStudentGradeGroup(itemValue)
-                        }
-                        style={styles.picker}
-                      >
-                        <Picker.Item
-                          label="Primary (1-5)"
-                          value="Primary (1-5)"
-                        />
-                        <Picker.Item
-                          label="Middle (6-8)"
-                          value="Middle (6-8)"
-                        />
-                        <Picker.Item label="High (9-10)" value="High (9-10)" />
-                      </Picker>
+              <View style={styles.filtersContainer}>
+                <Text style={styles.filtersLabel}>Filters</Text>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.filterScroll}
+                >
+                  <TouchableOpacity
+                    onPress={() => setShowGradePicker(true)}
+                    style={styles.filterButton}
+                  >
+                    <Text style={styles.filterButtonText}>{gradeFilter}</Text>
+                    <Icon name="expand-more" size={18} color="#9ca3af" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setShowPerformancePicker(true)}
+                    style={styles.filterButton}
+                  >
+                    <Text style={styles.filterButtonText}>
+                      {performanceFilter}
+                    </Text>
+                    <Icon name="expand-more" size={18} color="#9ca3af" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setShowSchoolPicker(true)}
+                    style={styles.filterButton}
+                  >
+                    <Text style={styles.filterButtonText}>
+                      {schoolFilter.length > 20
+                        ? schoolFilter.substring(0, 20) + "..."
+                        : schoolFilter}
+                    </Text>
+                    <Icon name="expand-more" size={18} color="#9ca3af" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    style={styles.clearButton}
+                  >
+                    <Text style={styles.clearButtonText}>Clear Filters</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+
+            {/* Students Table */}
+            <View style={styles.tableContainer}>
+              {/* Table Header */}
+              <View style={styles.tableHeader}>
+                <Text style={[styles.headerCell, styles.studentInfoCell]}>
+                  Student Info
+                </Text>
+                <Text style={[styles.headerCell, styles.schoolCell]}>
+                  School Linkage
+                </Text>
+                <Text style={[styles.headerCell, styles.progressCell]}>
+                  Academic Progress
+                </Text>
+                <Text style={[styles.headerCell, styles.actionsCell]}>
+                  Actions
+                </Text>
+              </View>
+
+              {/* Table Rows */}
+              <FlatList
+                data={filteredStudents}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={styles.tableRow}>
+                    {/* Student Info Column */}
+                    <View style={[styles.rowCell, styles.studentInfoCell]}>
+                      <View style={styles.studentInfoContainer}>
+                        <View
+                          style={[
+                            styles.initialsCircle,
+                            { backgroundColor: item.bgClass },
+                          ]}
+                        >
+                          <Text style={styles.initialsCircleText}>
+                            {item.initials}
+                          </Text>
+                        </View>
+                        <View style={styles.studentTextContainer}>
+                          <Text style={styles.studentNameText}>
+                            {item.name}
+                          </Text>
+                          <Text style={styles.studentIdText}>
+                            ID: {item.studentId}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* School Linkage Column */}
+                    <View style={[styles.rowCell, styles.schoolCell]}>
+                      <Text style={styles.schoolNameText} numberOfLines={2}>
+                        {item.school}
+                      </Text>
+                      <Text style={styles.gradeText}>
+                        {item.grade} • {item.district}
+                      </Text>
+                    </View>
+
+                    {/* Academic Progress Column */}
+                    <View style={[styles.rowCell, styles.progressCell]}>
+                      <View style={styles.attendanceContainer}>
+                        <View style={styles.attendanceHeaderRow}>
+                          <Text style={styles.attendanceLabelText}>
+                            Attendance
+                          </Text>
+                          <Text
+                            style={[
+                              styles.attendancePercentText,
+                              { color: item.attendanceColor },
+                            ]}
+                          >
+                            {item.attendance}%
+                          </Text>
+                        </View>
+                        <View style={styles.progressBarWrapper}>
+                          <View
+                            style={[
+                              styles.progressFill,
+                              {
+                                width: `${item.attendance}%`,
+                                backgroundColor: item.barColor,
+                              },
+                            ]}
+                          />
+                          {item.hasGlow && <View style={styles.progressGlow} />}
+                        </View>
+                        <View
+                          style={[
+                            styles.statusBadgeWrapper,
+                            { backgroundColor: item.statusClass },
+                          ]}
+                        >
+                          <Text style={styles.statusBadgeText}>
+                            {item.status}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Actions Column */}
+                    <View style={[styles.rowCell, styles.actionsCell]}>
+                      <View style={styles.actionButtonsContainer}>
+                        <TouchableOpacity
+                          style={styles.viewProfileBtn}
+                          onPress={() => Alert.alert("View Profile", item.name)}
+                        >
+                          <Text style={styles.viewProfileBtnText}>
+                            View Profile
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() =>
+                            handleDeleteStudent(item.id, item.name)
+                          }
+                          style={styles.deleteBtn}
+                        >
+                          <Icon
+                            name="delete-outline"
+                            size={20}
+                            color="#ef4444"
+                          />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.halfField}>
-                    <Text style={styles.formLabel}>Specific Grade</Text>
+                )}
+                ListEmptyComponent={() => (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>
+                      No student records match the selected filters.
+                    </Text>
+                  </View>
+                )}
+                scrollEnabled={false}
+              />
+            </View>
+
+            {/* Pagination */}
+            <View style={styles.paginationContainer}>
+              <Text style={styles.paginationInfo}>
+                Showing {filteredStudents.length} of {students.length} entries
+              </Text>
+              <View style={styles.paginationButtons}>
+                <TouchableOpacity style={styles.paginationButton}>
+                  <Icon name="chevron-left" size={20} color="#6B7280" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.paginationButton,
+                    styles.paginationButtonActive,
+                  ]}
+                >
+                  <Text style={styles.paginationButtonActiveText}>1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.paginationButton}>
+                  <Text style={styles.paginationButtonText}>2</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.paginationButton}>
+                  <Text style={styles.paginationButtonText}>3</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.paginationButton}>
+                  <Icon name="chevron-right" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Filter Modals */}
+          <FilterPickerModal
+            visible={showGradePicker}
+            onClose={() => setShowGradePicker(false)}
+            items={gradeGroups}
+            selected={gradeFilter}
+            onSelect={setGradeFilter}
+            title="Select Grade"
+          />
+
+          <FilterPickerModal
+            visible={showPerformancePicker}
+            onClose={() => setShowPerformancePicker(false)}
+            items={performanceOptions}
+            selected={performanceFilter}
+            onSelect={setPerformanceFilter}
+            title="Select Performance"
+          />
+
+          <FilterPickerModal
+            visible={showSchoolPicker}
+            onClose={() => setShowSchoolPicker(false)}
+            items={schoolOptions}
+            selected={schoolFilter}
+            onSelect={setSchoolFilter}
+            title="Select School"
+          />
+
+          {/* Add Student Modal */}
+          <Modal
+            visible={showAddModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowAddModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.addModalContent}>
+                <View style={styles.addModalHeader}>
+                  <Text style={styles.addModalTitle}>
+                    Add New Student Record
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                    <Icon name="close" size={24} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.formContainer}>
+                  <View>
+                    <Text style={styles.formLabel}>Student Full Name *</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g. Aarav Kumar"
+                      placeholderTextColor="#9ca3af"
+                      value={newStudentName}
+                      onChangeText={setNewStudentName}
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={styles.formLabel}>Student ID (Optional)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g. STU-2026-101 (Leave blank to auto-generate)"
+                      placeholderTextColor="#9ca3af"
+                      value={newStudentId}
+                      onChangeText={setNewStudentId}
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={styles.formLabel}>
+                      Partner School Linkage *
+                    </Text>
                     <View style={styles.pickerContainer}>
                       <Picker
-                        selectedValue={newStudentGrade}
+                        selectedValue={newStudentSchool}
                         onValueChange={(itemValue) =>
-                          setNewStudentGrade(itemValue)
+                          setNewStudentSchool(itemValue)
                         }
                         style={styles.picker}
                       >
-                        {Array.from(
-                          { length: 10 },
-                          (_, i) => `Grade ${i + 1}`,
-                        ).map((g) => (
-                          <Picker.Item key={g} label={g} value={g} />
+                        <Picker.Item
+                          label="Select partner school..."
+                          value=""
+                        />
+                        {DEFAULT_SCHOOLS.map((sch) => (
+                          <Picker.Item
+                            key={sch.name}
+                            label={sch.name}
+                            value={sch.name}
+                          />
                         ))}
                       </Picker>
                     </View>
                   </View>
-                </View>
 
-                <View style={styles.row}>
-                  <View style={styles.halfField}>
-                    <Text style={styles.formLabel}>Attendance (%) *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      keyboardType="numeric"
-                      placeholder="e.g. 95"
-                      placeholderTextColor="#9ca3af"
-                      value={newStudentAttendance}
-                      onChangeText={setNewStudentAttendance}
-                    />
-                  </View>
-                  <View style={styles.halfField}>
-                    <Text style={styles.formLabel}>Academic Status</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={newStudentStatus}
-                        onValueChange={(itemValue) =>
-                          setNewStudentStatus(itemValue)
-                        }
-                        style={styles.picker}
-                      >
-                        <Picker.Item label="On Track" value="On Track" />
-                        <Picker.Item
-                          label="Satisfactory"
-                          value="Satisfactory"
-                        />
-                        <Picker.Item
-                          label="Needs Attention"
-                          value="Needs Attention"
-                        />
-                        <Picker.Item label="Excelling" value="Excelling" />
-                      </Picker>
+                  <View style={styles.row}>
+                    <View style={styles.halfField}>
+                      <Text style={styles.formLabel}>Grade Group</Text>
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={newStudentGradeGroup}
+                          onValueChange={(itemValue) =>
+                            setNewStudentGradeGroup(itemValue)
+                          }
+                          style={styles.picker}
+                        >
+                          <Picker.Item
+                            label="Primary (1-5)"
+                            value="Primary (1-5)"
+                          />
+                          <Picker.Item
+                            label="Middle (6-8)"
+                            value="Middle (6-8)"
+                          />
+                          <Picker.Item
+                            label="High (9-10)"
+                            value="High (9-10)"
+                          />
+                        </Picker>
+                      </View>
+                    </View>
+                    <View style={styles.halfField}>
+                      <Text style={styles.formLabel}>Specific Grade</Text>
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={newStudentGrade}
+                          onValueChange={(itemValue) =>
+                            setNewStudentGrade(itemValue)
+                          }
+                          style={styles.picker}
+                        >
+                          {Array.from(
+                            { length: 10 },
+                            (_, i) => `Grade ${i + 1}`,
+                          ).map((g) => (
+                            <Picker.Item key={g} label={g} value={g} />
+                          ))}
+                        </Picker>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                <View style={styles.formButtons}>
-                  <TouchableOpacity
-                    onPress={() => setShowAddModal(false)}
-                    style={styles.cancelButton}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleAddStudent}
-                    style={styles.submitButton}
-                  >
-                    <Text style={styles.submitButtonText}>Add Student</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
+                  <View style={styles.row}>
+                    <View style={styles.halfField}>
+                      <Text style={styles.formLabel}>Attendance (%) *</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        keyboardType="numeric"
+                        placeholder="e.g. 95"
+                        placeholderTextColor="#9ca3af"
+                        value={newStudentAttendance}
+                        onChangeText={setNewStudentAttendance}
+                      />
+                    </View>
+                    <View style={styles.halfField}>
+                      <Text style={styles.formLabel}>Academic Status</Text>
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={newStudentStatus}
+                          onValueChange={(itemValue) =>
+                            setNewStudentStatus(itemValue)
+                          }
+                          style={styles.picker}
+                        >
+                          <Picker.Item label="On Track" value="On Track" />
+                          <Picker.Item
+                            label="Satisfactory"
+                            value="Satisfactory"
+                          />
+                          <Picker.Item
+                            label="Needs Attention"
+                            value="Needs Attention"
+                          />
+                          <Picker.Item label="Excelling" value="Excelling" />
+                        </Picker>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.formButtons}>
+                    <TouchableOpacity
+                      onPress={() => setShowAddModal(false)}
+                      style={styles.cancelButton}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleAddStudent}
+                      style={styles.submitButton}
+                    >
+                      <Text style={styles.submitButtonText}>Add Student</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
             </View>
-          </View>
-        </Modal>
-      </SafeAreaView>
-    </View>
+          </Modal>
+        </SafeAreaView>
+      </View>
+    </RouteGuard>
   );
 };
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#64748b",
+  },
   // Sidebar styles
   sidebar: {
     position: "absolute",
@@ -1418,35 +1713,57 @@ const styles = StyleSheet.create({
   statsFiltersContainer: {
     marginBottom: 24,
   },
-  statCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
     marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
+  statCardGreen: {
+    backgroundColor: "#059669",
+  },
+  statCardBlue: {
+    backgroundColor: "#3b82f6",
+  },
+  statCardOrange: {
+    backgroundColor: "#f59e0b",
+  },
+  statCardRed: {
+    backgroundColor: "#ef4444",
+  },
   statTitle: {
-    fontSize: 12,
+    fontSize: 10,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     color: "#64748b",
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  statTitleWhite: {
+    color: "rgba(255,255,255,0.8)",
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "900",
     color: "#0f172a",
-    marginBottom: 8,
+  },
+  statValueWhite: {
+    color: "#ffffff",
   },
   trendContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    marginTop: 4,
   },
   trendText: {
     fontSize: 11,
@@ -1535,7 +1852,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   actionsCell: {
-    flex: 1,
+    flex: 1.2,
     textAlign: "right",
     paddingRight: 16,
   },
@@ -1642,7 +1959,6 @@ const styles = StyleSheet.create({
     color: "#065f46",
   },
   viewProfileBtn: {
-    alignSelf: "flex-end",
     paddingVertical: 8,
     paddingHorizontal: 12,
     backgroundColor: "#F0FDF4",
@@ -1652,6 +1968,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: "#059669",
+  },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  deleteBtn: {
+    padding: 8,
   },
   emptyState: {
     padding: 48,

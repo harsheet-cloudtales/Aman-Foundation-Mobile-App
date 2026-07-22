@@ -1,8 +1,12 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -19,7 +23,36 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// Theme Colors
+// ============================================
+// TYPES
+// ============================================
+interface GoatStats {
+  totalBeneficiaries: number;
+  totalLivestock: number;
+  adults: number;
+  kids: number;
+  avgROI: string;
+  growthRate: string;
+  activeVillages: number;
+}
+
+interface HealthLog {
+  id: string;
+  tag: string;
+  beneficiary: string;
+  checked: string;
+  status: string;
+  isHealthy: boolean;
+}
+
+interface TrajectoryData {
+  label: string;
+  value: number;
+}
+
+// ============================================
+// THEME COLORS
+// ============================================
 const colors = {
   primary: "#006857",
   primaryContainer: "#00846e",
@@ -27,7 +60,6 @@ const colors = {
   onPrimaryContainer: "#f4fffa",
   primaryFixed: "#7cf8da",
   onPrimaryFixed: "#00201a",
-  primaryFixedDim: "#5ddbbe",
   surface: "#f8f9fa",
   surfaceContainerLowest: "#ffffff",
   surfaceContainerLow: "#f3f4f5",
@@ -36,19 +68,17 @@ const colors = {
   onSurface: "#191c1d",
   onSurfaceVariant: "#3d4945",
   outlineVariant: "#bccac4",
-  inverseSurface: "#2e3132",
-  inverseOnSurface: "#f0f1f2",
   secondary: "#964900",
   secondaryContainer: "#fc820c",
   secondaryFixed: "#ffdcc6",
   onSecondaryContainer: "#5e2c00",
-  error: "#ba1a1a",
-  errorContainer: "#ffdad6",
   rose: "#ef4444",
   emerald: "#10b981",
 };
 
-// ---------- Footer Component ----------
+// ============================================
+// FOOTER COMPONENT
+// ============================================
 const Footer = () => {
   return (
     <View style={styles.footer}>
@@ -113,57 +143,150 @@ const Footer = () => {
   );
 };
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function GoatRearing() {
+  const { user } = useAuth();
   const router = useRouter();
   const [timeframe, setTimeframe] = useState("1 Year");
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showFooter, setShowFooter] = useState(false);
+  const [stats, setStats] = useState<GoatStats>({
+    totalBeneficiaries: 0,
+    totalLivestock: 0,
+    adults: 0,
+    kids: 0,
+    avgROI: "0%",
+    growthRate: "+0%",
+    activeVillages: 0,
+  });
+  const [healthLogs, setHealthLogs] = useState<HealthLog[]>([]);
+  const [trajectoryData, setTrajectoryData] = useState<TrajectoryData[]>([]);
+
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
-  const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
+  const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(true);
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
-  const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
+  const livelihoodRotateAnim = useRef(new Animated.Value(1)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
-  // Trajectory data
-  const trajectoryHeights = {
-    "6 Months": [40, 50, 60, 45, 55],
-    "1 Year": [30, 45, 60, 75, 90],
+  // ============================================
+  // FETCH DATA
+  // ============================================
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch goat rearing stats
+      const statsData = await api.get<GoatStats>("/api/livelihood/goat/stats");
+      if (statsData) {
+        setStats({
+          totalBeneficiaries: statsData.totalBeneficiaries || 0,
+          totalLivestock: statsData.totalLivestock || 0,
+          adults: statsData.adults || 0,
+          kids: statsData.kids || 0,
+          avgROI: statsData.avgROI || "0%",
+          growthRate: statsData.growthRate || "+0%",
+          activeVillages: statsData.activeVillages || 0,
+        });
+      }
+
+      // Fetch health logs
+      const healthData = await api.get<HealthLog[]>(
+        "/api/livelihood/goat/health",
+      );
+      if (healthData) {
+        setHealthLogs(healthData);
+      }
+
+      // Fetch trajectory data
+      const trajectory = await api.get<TrajectoryData[]>(
+        "/api/livelihood/goat/trajectory",
+      );
+      if (trajectory) {
+        setTrajectoryData(trajectory);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Goat rearing data fetch error:", err.message);
+      }
+      // Fallback data
+      setStats({
+        totalBeneficiaries: 1248,
+        totalLivestock: 3740,
+        adults: 2100,
+        kids: 1640,
+        avgROI: "145%",
+        growthRate: "+12%",
+        activeVillages: 32,
+      });
+      setHealthLogs([
+        {
+          id: "1",
+          tag: "GR-4092",
+          beneficiary: "Fatima Bi",
+          checked: "Today",
+          status: "Healthy",
+          isHealthy: true,
+        },
+        {
+          id: "2",
+          tag: "GR-4105",
+          beneficiary: "Rahim Khan",
+          checked: "Yesterday",
+          status: "Needs Check",
+          isHealthy: false,
+        },
+        {
+          id: "3",
+          tag: "GR-3988",
+          beneficiary: "Amina Begum",
+          checked: "2d ago",
+          status: "Healthy",
+          isHealthy: true,
+        },
+        {
+          id: "4",
+          tag: "GR-4156",
+          beneficiary: "Sawpan Das",
+          checked: "3d ago",
+          status: "Healthy",
+          isHealthy: true,
+        },
+        {
+          id: "5",
+          tag: "GR-4201",
+          beneficiary: "Joynal Abedin",
+          checked: "5d ago",
+          status: "Vaccinated",
+          isHealthy: true,
+        },
+      ]);
+      setTrajectoryData([
+        { label: "Bartari", value: 40 },
+        { label: "Digjani", value: 50 },
+        { label: "Sawpur", value: 60 },
+        { label: "Balikuri", value: 45 },
+        { label: "Gunialguri", value: 55 },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const heights = trajectoryHeights[timeframe];
-  const locations = ["Bartari", "Digjani", "Sawpur", "Balikuri", "Gunialguri"];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const healthLogs = [
-    {
-      id: 1,
-      tag: "GR-4092",
-      beneficiary: "Fatima Bi",
-      checked: "Today",
-      status: "Healthy",
-      isHealthy: true,
-    },
-    {
-      id: 2,
-      tag: "GR-4105",
-      beneficiary: "Rahim Khan",
-      checked: "Yesterday",
-      status: "Needs Check",
-      isHealthy: false,
-    },
-    {
-      id: 3,
-      tag: "GR-3988",
-      beneficiary: "Amina Begum",
-      checked: "2d ago",
-      status: "Healthy",
-      isHealthy: true,
-    },
-  ];
-
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -178,6 +301,16 @@ export default function GoatRearing() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -212,11 +345,10 @@ export default function GoatRearing() {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
-  // Logout function
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -238,7 +370,7 @@ export default function GoatRearing() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    fetchData();
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -256,6 +388,9 @@ export default function GoatRearing() {
     outputRange: ["0deg", "180deg"],
   });
 
+  // ============================================
+  // COMPONENTS
+  // ============================================
   const MetricCard = ({
     title,
     value,
@@ -361,508 +496,596 @@ export default function GoatRearing() {
     </View>
   );
 
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading goat rearing data...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        <View style={styles.brandContainer}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            style={styles.brandIcon}
-          >
-            <MaterialIcons name="local-library" size={22} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
 
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Students Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>PTA & Programs</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN - ACTIVE */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
-                  Goat Rearing
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryContainer]}
+                style={styles.brandIcon}
               >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={18}
-                  color={colors.rose}
-                />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-              <MaterialIcons name="menu" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Impact Portal</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#6B7280"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
-            >
-              <Ionicons name="settings-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/profile")}>
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {/* Back Link */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/livelihood_management_hub")}
-          >
-            <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
-            <Text style={styles.backText}>Back to Livelihood Hub</Text>
-          </TouchableOpacity>
-
-          {/* Page Header */}
-          <View style={styles.pageHeader}>
-            <View style={styles.pageHeaderContent}>
-              <Text style={styles.mainTitle}>
-                Goat Rearing Distribution & Health
-              </Text>
-              <Text style={styles.subtitle}>
-                Monitoring livelihood impact through livestock distribution
-                metrics, health tracking, and return on investment for rural
-                beneficiaries.
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.exportButton}>
-              <MaterialIcons
-                name="download"
-                size={16}
-                color={colors.onPrimary}
-              />
-              <Text style={styles.exportButtonText}>Export Data</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Bento Grid Layout */}
-          <View style={styles.grid}>
-            {/* Left Column - Metrics */}
-            <View style={styles.leftColumn}>
-              <MetricCard
-                title="Total Beneficiaries"
-                value="1,248"
-                trend="+12%"
-                subtitle="Across 32 active villages"
-              />
-              <View style={styles.metricCard}>
-                <Text style={styles.metricTitle}>Active Livestock</Text>
-                <Text style={[styles.metricValue, { fontSize: 32 }]}>
-                  3,740
-                </Text>
-                <View style={styles.livestockStats}>
-                  <View>
-                    <View style={styles.livestockRow}>
-                      <Text style={styles.livestockLabel}>Adults</Text>
-                      <Text style={styles.livestockNumber}>2,100</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          { width: "60%", backgroundColor: colors.primary },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                  <View>
-                    <View style={styles.livestockRow}>
-                      <Text style={styles.livestockLabel}>Kids</Text>
-                      <Text style={styles.livestockNumber}>1,640</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: "40%",
-                            backgroundColor: colors.primaryContainer,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
+                <MaterialIcons name="local-library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
               </View>
-              <MetricCard
-                title="Avg. Household ROI"
-                value="145%"
-                subtitle="Estimated return over 24 months based on initial capital investment and organic herd growth."
-                isHighlighted={true}
-              />
             </View>
 
-            {/* Right Column - Chart & Health Logs */}
-            <View style={styles.rightColumn}>
-              {/* Chart Section */}
-              <View style={styles.chartCard}>
-                <View style={styles.chartHeader}>
-                  <Text style={styles.chartTitle}>Outcome Trajectory</Text>
-                  <View style={styles.timeframeButtons}>
-                    <TouchableOpacity
-                      style={[
-                        styles.timeframeButton,
-                        timeframe === "6 Months" &&
-                          styles.timeframeButtonActive,
-                      ]}
-                      onPress={() => setTimeframe("6 Months")}
-                    >
-                      <Text
-                        style={[
-                          styles.timeframeText,
-                          timeframe === "6 Months" &&
-                            styles.timeframeTextActive,
-                        ]}
-                      >
-                        6 Months
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.timeframeButton,
-                        timeframe === "1 Year" && styles.timeframeButtonActive,
-                      ]}
-                      onPress={() => setTimeframe("1 Year")}
-                    >
-                      <Text
-                        style={[
-                          styles.timeframeText,
-                          timeframe === "1 Year" && styles.timeframeTextActive,
-                        ]}
-                      >
-                        1 Year
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
+            >
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
 
-                {/* Chart Bars */}
-                <View style={styles.chartContainer}>
-                  {heights.map((height, index) => (
-                    <View key={index} style={styles.barWrapper}>
-                      <View
-                        style={[
-                          styles.bar,
-                          { height: `${height}%` },
-                          index === 4 && styles.barLast,
-                          index === 3 && styles.barThird,
-                          index === 2 && styles.barSecond,
-                          index === 1 && styles.barFirst,
-                        ]}
-                      />
-                    </View>
-                  ))}
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
                 </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
 
-                {/* Locations */}
-                <View style={styles.locationsContainer}>
-                  {locations.map((location, index) => (
-                    <Text key={index} style={styles.locationText}>
-                      {location}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-
-              {/* Health Logs */}
-              <View style={styles.healthLogsCard}>
-                <View style={styles.healthLogsHeader}>
-                  <Text style={styles.healthLogsTitle}>
-                    Recent Livestock Health Logs
-                  </Text>
-                  <TouchableOpacity>
-                    <Text style={styles.viewAllText}>View All</Text>
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
+                  >
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Students Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PTA & Programs</Text>
                   </TouchableOpacity>
                 </View>
+              )}
+            </View>
 
-                {healthLogs.map((log) => (
-                  <HealthLogItem
-                    key={log.id}
-                    tag={log.tag}
-                    beneficiary={log.beneficiary}
-                    checked={log.checked}
-                    status={log.status}
-                    isHealthy={log.isHealthy}
-                  />
-                ))}
-              </View>
+            {/* LIVELIHOOD WITH DROPDOWN - ACTIVE */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemActive]}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#047857" />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextActive]}
+                    >
+                      Goat Rearing
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
+              />
+              <Text style={styles.menuText}>Admin & Access</Text>
+            </TouchableOpacity>
+
+            {/* AUTHENTICATION SECTION */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={colors.rose}
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+                <MaterialIcons name="menu" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Impact Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile")}>
+                <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatar}
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Footer - Only visible when scrolled */}
-          {showFooter && <Footer />}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+              />
+            }
+          >
+            {/* Back Link */}
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.push("/livelihood_management_hub")}
+            >
+              <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
+              <Text style={styles.backText}>Back to Livelihood Hub</Text>
+            </TouchableOpacity>
+
+            {/* Page Header */}
+            <View style={styles.pageHeader}>
+              <View style={styles.pageHeaderContent}>
+                <Text style={styles.mainTitle}>
+                  Goat Rearing Distribution & Health
+                </Text>
+                <Text style={styles.subtitle}>
+                  Monitoring livelihood impact through livestock distribution
+                  metrics, health tracking, and return on investment for rural
+                  beneficiaries.
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.exportButton}>
+                <MaterialIcons
+                  name="download"
+                  size={16}
+                  color={colors.onPrimary}
+                />
+                <Text style={styles.exportButtonText}>Export Data</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bento Grid Layout */}
+            <View style={styles.grid}>
+              {/* Left Column - Metrics */}
+              <View style={styles.leftColumn}>
+                <MetricCard
+                  title="Total Beneficiaries"
+                  value={stats.totalBeneficiaries.toLocaleString()}
+                  trend={stats.growthRate}
+                  subtitle={`Across ${stats.activeVillages} active villages`}
+                />
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricTitle}>Active Livestock</Text>
+                  <Text style={[styles.metricValue, { fontSize: 32 }]}>
+                    {stats.totalLivestock.toLocaleString()}
+                  </Text>
+                  <View style={styles.livestockStats}>
+                    <View>
+                      <View style={styles.livestockRow}>
+                        <Text style={styles.livestockLabel}>Adults</Text>
+                        <Text style={styles.livestockNumber}>
+                          {stats.adults.toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${(stats.adults / stats.totalLivestock) * 100}%`,
+                              backgroundColor: colors.primary,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                    <View>
+                      <View style={styles.livestockRow}>
+                        <Text style={styles.livestockLabel}>Kids</Text>
+                        <Text style={styles.livestockNumber}>
+                          {stats.kids.toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${(stats.kids / stats.totalLivestock) * 100}%`,
+                              backgroundColor: colors.primaryContainer,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                <MetricCard
+                  title="Avg. Household ROI"
+                  value={stats.avgROI}
+                  subtitle="Estimated return over 24 months based on initial capital investment and organic herd growth."
+                  isHighlighted={true}
+                />
+              </View>
+
+              {/* Right Column - Chart & Health Logs */}
+              <View style={styles.rightColumn}>
+                {/* Chart Section */}
+                <View style={styles.chartCard}>
+                  <View style={styles.chartHeader}>
+                    <Text style={styles.chartTitle}>Outcome Trajectory</Text>
+                    <View style={styles.timeframeButtons}>
+                      <TouchableOpacity
+                        style={[
+                          styles.timeframeButton,
+                          timeframe === "6 Months" &&
+                            styles.timeframeButtonActive,
+                        ]}
+                        onPress={() => setTimeframe("6 Months")}
+                      >
+                        <Text
+                          style={[
+                            styles.timeframeText,
+                            timeframe === "6 Months" &&
+                              styles.timeframeTextActive,
+                          ]}
+                        >
+                          6 Months
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.timeframeButton,
+                          timeframe === "1 Year" &&
+                            styles.timeframeButtonActive,
+                        ]}
+                        onPress={() => setTimeframe("1 Year")}
+                      >
+                        <Text
+                          style={[
+                            styles.timeframeText,
+                            timeframe === "1 Year" &&
+                              styles.timeframeTextActive,
+                          ]}
+                        >
+                          1 Year
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Chart Bars */}
+                  <View style={styles.chartContainer}>
+                    {trajectoryData.map((item, index) => (
+                      <View key={index} style={styles.barWrapper}>
+                        <View
+                          style={[
+                            styles.bar,
+                            { height: `${item.value}%` },
+                            index === trajectoryData.length - 1 &&
+                              styles.barLast,
+                            index === trajectoryData.length - 2 &&
+                              styles.barThird,
+                            index === Math.floor(trajectoryData.length / 2) &&
+                              styles.barSecond,
+                            index === 0 && styles.barFirst,
+                          ]}
+                        />
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Locations */}
+                  <View style={styles.locationsContainer}>
+                    {trajectoryData.map((item, index) => (
+                      <Text key={index} style={styles.locationText}>
+                        {item.label}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Health Logs */}
+                <View style={styles.healthLogsCard}>
+                  <View style={styles.healthLogsHeader}>
+                    <Text style={styles.healthLogsTitle}>
+                      Recent Livestock Health Logs
+                    </Text>
+                    <TouchableOpacity>
+                      <Text style={styles.viewAllText}>View All</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {healthLogs.slice(0, 4).map((log) => (
+                    <HealthLogItem
+                      key={log.id}
+                      tag={log.tag}
+                      beneficiary={log.beneficiary}
+                      checked={log.checked}
+                      status={log.status}
+                      isHealthy={log.isHealthy}
+                    />
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Footer - Only visible when scrolled */}
+            {showFooter && <Footer />}
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </RouteGuard>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
   // ==================================================
   // LAYOUT
   // ==================================================
@@ -1116,7 +1339,6 @@ const styles = StyleSheet.create({
   pageHeaderContent: {
     flex: 1,
     minWidth: 200,
-    maxWidth: "70%",
   },
 
   mainTitle: {

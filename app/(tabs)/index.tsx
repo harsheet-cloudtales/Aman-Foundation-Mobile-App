@@ -1,8 +1,10 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { getUserRole, UserRole } from "@/utils/permissions";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -87,11 +89,73 @@ const Footer = () => {
 export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [showFooter, setShowFooter] = useState(false);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [highlights, setHighlights] = useState<any[]>([]);
+
   const router = useRouter();
   const { user, logout: authLogout } = useAuth();
   const currentRole = getUserRole(user);
   const isFellowUser = currentRole === UserRole.FELLOW;
   const hasFullAccess = !isFellowUser;
+
+  // ============================================
+  // FETCH DASHBOARD DATA
+  // ============================================
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Try to fetch real data from API
+      const response = await api.get("/api/dashboard/metrics");
+
+      if (response.success && response.data) {
+        setMetrics(response.data);
+        setHighlights(response.data.highlights || []);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Dashboard API error:", err.message);
+      }
+
+      // Fallback to static data if API fails
+      setMetrics({
+        totalBeneficiaries: 12450,
+        activeFellows: 342,
+        schoolsReached: 128,
+        livelihoodPrograms: 4820,
+        growthRate: "+14%",
+        deploymentRate: "85%",
+        schoolsTarget: 150,
+      });
+
+      setHighlights([
+        {
+          id: 1,
+          title: "Goat Rearing Phase 2",
+          description:
+            "Distribution of 500 livestock to identified families in Ward 4 completed ahead of schedule.",
+          time: "2 days ago",
+          icon: "leaf-outline",
+        },
+        {
+          id: 2,
+          title: "New Fellows",
+          description:
+            "45 new fellows onboarded and assigned to 12 target schools in the northern district.",
+          time: "5 days ago",
+          icon: "school-outline",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   // Sidebar
   const [menuOpen, setMenuOpen] = useState(false);
@@ -156,7 +220,7 @@ export default function Dashboard() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    fetchDashboardData();
   };
 
   const handleScroll = (event: any) => {
@@ -195,497 +259,561 @@ export default function Dashboard() {
   });
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        {/* BRAND */}
-        <View style={styles.brandContainer}>
-          <View style={styles.brandIcon}>
-            <Ionicons name="business-outline" size={22} color="#fff" />
-          </View>
-
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        {/* MENU */}
-        <TouchableOpacity style={styles.menuItemActive}>
-          <Ionicons name="grid-outline" size={20} color="#fff" />
-          <Text style={styles.menuTextActive}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/education_management_hub");
-                }}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/education_schools_module");
-                }}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/education_fellows_module");
-                }}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/education_students_module");
-                }}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Active Programs</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/education_pta_programs");
-                }}
-              >
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Progress Reports</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/livelihood_management_hub");
-                }}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/livelihood_goat_rearing_1");
-                }}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/livelihood_sugarcane_cultivation");
-                }}
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/beneficiary_master_profile");
-                }}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {hasFullAccess && (
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              toggleMenu();
-              router.push("/disaster_relief_management");
-            }}
-          >
-            <Ionicons name="snow-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>Disaster Relief</Text>
-          </TouchableOpacity>
-        )}
-
-        {hasFullAccess && (
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              toggleMenu();
-              router.push("/hr_employee_management");
-            }}
-          >
-            <Ionicons name="people-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>HR Management</Text>
-          </TouchableOpacity>
-        )}
-
-        {hasFullAccess && (
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              toggleMenu();
-              router.push("/admin_access_control");
-            }}
-          >
-            <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>Admin & Access</Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/(tabs)/leaves");
-          }}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Leaves</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/registration");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN SCREEN */}
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: 60 }}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-        overScrollMode="always"
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#047857"]}
-            tintColor="#047857"
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={toggleMenu}
           />
-        }
-      >
-        {/* Top Bar */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={toggleMenu}>
-            <Ionicons name="menu-outline" size={26} color="#1f2937" />
+        )}
+
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
+        >
+          {/* BRAND */}
+          <View style={styles.brandContainer}>
+            <View style={styles.brandIcon}>
+              <Ionicons name="business-outline" size={22} color="#fff" />
+            </View>
+
+            <View>
+              <Text style={styles.brandTitle}>Aman Foundation</Text>
+              <Text style={styles.brandSub}>Impact Portal</Text>
+            </View>
+          </View>
+
+          {/* MENU */}
+          <TouchableOpacity style={styles.menuItemActive}>
+            <Ionicons name="grid-outline" size={20} color="#fff" />
+            <Text style={styles.menuTextActive}>Dashboard</Text>
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Impact Portal</Text>
-
-          <View style={styles.headerIcons}>
+          {/* EDUCATION WITH DROPDOWN */}
+          <View>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
+              style={styles.menuItemWithDropdown}
+              onPress={toggleEducationDropdown}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="school-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Education</Text>
+              </View>
+              <Animated.View
+                style={{ transform: [{ rotate: rotateEducation }] }}
+              >
+                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+              </Animated.View>
+            </TouchableOpacity>
+
+            {educationDropdownOpen && (
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/education_management_hub");
+                  }}
+                >
+                  <Ionicons name="library-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Management Hub</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/education_schools_module");
+                  }}
+                >
+                  <Ionicons name="business-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Schools Overview</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/education_fellows_module");
+                  }}
+                >
+                  <Ionicons name="people-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Fellows Directory</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/education_students_module");
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Active Programs</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/education_pta_programs");
+                  }}
+                >
+                  <Ionicons
+                    name="document-text-outline"
+                    size={18}
+                    color="#6b7280"
+                  />
+                  <Text style={styles.dropdownText}>Progress Reports</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* LIVELIHOOD WITH DROPDOWN */}
+          <View>
+            <TouchableOpacity
+              style={styles.menuItemWithDropdown}
+              onPress={toggleLivelihoodDropdown}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Livelihood</Text>
+              </View>
+              <Animated.View
+                style={{ transform: [{ rotate: rotateLivelihood }] }}
+              >
+                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+              </Animated.View>
+            </TouchableOpacity>
+
+            {livelihoodDropdownOpen && (
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/livelihood_management_hub");
+                  }}
+                >
+                  <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Management Hub</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/livelihood_goat_rearing_1");
+                  }}
+                >
+                  <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Goat Rearing</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/livelihood_sugarcane_cultivation");
+                  }}
+                >
+                  <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Agriculture Support</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/beneficiary_master_profile");
+                  }}
+                >
+                  <Ionicons
+                    name="people-circle-outline"
+                    size={18}
+                    color="#6b7280"
+                  />
+                  <Text style={styles.dropdownText}>Beneficiaries</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {hasFullAccess && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                toggleMenu();
+                router.push("/disaster_relief_management");
+              }}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+          )}
+
+          {hasFullAccess && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                toggleMenu();
+                router.push("/hr_employee_management");
+              }}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+          )}
+
+          {hasFullAccess && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                toggleMenu();
+                router.push("/admin_access_control");
+              }}
             >
               <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#1f2937"
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
               />
+              <Text style={styles.menuText}>Admin & Access</Text>
             </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              toggleMenu();
+              router.push("/(tabs)/leaves");
+            }}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#4b5563" />
+            <Text style={styles.menuText}>Leaves</Text>
+          </TouchableOpacity>
+
+          {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+          <View style={styles.menuDivider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ACCOUNT</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              toggleMenu();
+              router.push("/profile");
+            }}
+          >
+            <Ionicons name="person-outline" size={20} color="#4b5563" />
+            <Text style={styles.menuText}>My Profile</Text>
+          </TouchableOpacity>
+
+          <View>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
+              style={styles.menuItemWithDropdown}
+              onPress={toggleAuthDropdown}
             >
-              <Ionicons name="settings-outline" size={22} color="#1f2937" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/profile")}>
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* //role based */}
-        <View style={styles.roleBanner}>
-          <Text style={styles.roleBannerTitle}>
-            {isFellowUser ? "Fellow workspace" : "Program manager workspace"}
-          </Text>
-          <Text style={styles.roleBannerText}>
-            {isFellowUser
-              ? "Education, Livelihood, and Leaves are enabled for your account."
-              : "You have full access to the portal modules."}
-          </Text>
-        </View>
-        {/* Title */}
-        <View style={styles.section}>
-          <Text style={styles.mainTitle}>YTD Impact{"\n"}Snapshot</Text>
-          <Text style={styles.subText}>Data updated: Today, 09:41 AM</Text>
-        </View>
-        {/* Buttons */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="download-outline" size={18} color="#374151" />
-            <Text style={styles.outlineText}>Export Report</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.primaryBtn}>
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.primaryText}>New Entry</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Card 1 */}
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>TOTAL BENEFICIARIES</Text>
-          <Text style={styles.cardNumber}>12,450</Text>
-
-          <View style={styles.row}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>+14%</Text>
-            </View>
-            <Text style={styles.smallText}>vs last quarter</Text>
-          </View>
-        </View>
-        {/* Card 2 */}
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>ACTIVE FELLOWS</Text>
-          <Text style={styles.cardNumber}>342</Text>
-
-          <View style={styles.progressBg}>
-            <View style={styles.progressFill} />
-          </View>
-          <Text style={styles.smallText}>85% deployed</Text>
-        </View>
-        {/* Grid Cards */}
-        <View style={styles.grid}>
-          <View style={styles.halfCard}>
-            <Text style={styles.cardTitle}>Schools Reached</Text>
-            <Text style={styles.cardValue}>128</Text>
-            <Text style={styles.cardSub}>Target: 150</Text>
-          </View>
-
-          <View style={[styles.halfCard, styles.highlightCard]}>
-            <Text style={styles.cardTitleWhite}>Livelihood Programs</Text>
-            <Text style={styles.cardValueWhite}>4,820</Text>
-            <Text style={styles.cardSubWhite}>Families Supported</Text>
-          </View>
-        </View>
-        {/* CHART WITH AXIS */}
-        <View style={styles.section}>
-          <Text style={styles.heading}>Education Enrollment Growth</Text>
-
-          <View style={styles.chartContainer}>
-            {/* Y Axis */}
-            <View style={styles.yAxis}>
-              {["5k", "4k", "3k", "2k", "1k", "0"].map((label, i) => (
-                <Text key={i} style={styles.yLabel}>
-                  {label}
-                </Text>
-              ))}
-            </View>
-
-            {/* Bars */}
-            <View style={styles.chartArea}>
-              <View style={styles.chart}>
-                {[60, 100, 140, 180, 220].map((h, i) => (
-                  <View key={i} style={[styles.bar, { height: h }]} />
-                ))}
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="key-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Authentication</Text>
               </View>
+              <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+              </Animated.View>
+            </TouchableOpacity>
 
-              {/* X Axis */}
-              <View style={styles.xAxis}>
-                {["Jan", "Feb", "Mar", "Apr", "May"].map((m, i) => (
-                  <Text key={i} style={styles.xLabel}>
-                    {m}
+            {authDropdownOpen && (
+              <View style={styles.dropdownContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/login");
+                  }}
+                >
+                  <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                  <Text style={styles.dropdownText}>Login Page</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    toggleMenu();
+                    router.push("/registration");
+                  }}
+                >
+                  <Ionicons
+                    name="person-add-outline"
+                    size={18}
+                    color="#6b7280"
+                  />
+                  <Text style={styles.dropdownText}>Register Page</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                  onPress={handleLogout}
+                >
+                  <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                  <Text
+                    style={[styles.dropdownText, styles.dropdownTextLogout]}
+                  >
+                    Logout
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* MAIN SCREEN */}
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ paddingBottom: 60 }}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          overScrollMode="always"
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#047857"]}
+              tintColor="#047857"
+            />
+          }
+        >
+          {/* Top Bar */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={toggleMenu}>
+              <Ionicons name="menu-outline" size={26} color="#1f2937" />
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Impact Portal</Text>
+
+            <View style={styles.headerIcons}>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#1f2937"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#1f2937" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile")}>
+                <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatar}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Role Banner */}
+          <View style={styles.roleBanner}>
+            <Text style={styles.roleBannerTitle}>
+              {isFellowUser ? "Fellow workspace" : "Program manager workspace"}
+            </Text>
+            <Text style={styles.roleBannerText}>
+              {isFellowUser
+                ? "Education, Livelihood, and Leaves are enabled for your account."
+                : "You have full access to the portal modules."}
+            </Text>
+          </View>
+
+          {/* Title */}
+          <View style={styles.section}>
+            <Text style={styles.mainTitle}>YTD Impact{"\n"}Snapshot</Text>
+            <Text style={styles.subText}>
+              Data updated: {new Date().toLocaleString()}
+            </Text>
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.outlineBtn}>
+              <Ionicons name="download-outline" size={18} color="#374151" />
+              <Text style={styles.outlineText}>Export Report</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.primaryBtn}>
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={styles.primaryText}>New Entry</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Card 1 - Dynamic */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>TOTAL BENEFICIARIES</Text>
+            <Text style={styles.cardNumber}>
+              {metrics?.totalBeneficiaries?.toLocaleString() || "0"}
+            </Text>
+
+            <View style={styles.row}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {metrics?.growthRate || "+0%"}
+                </Text>
+              </View>
+              <Text style={styles.smallText}>vs last quarter</Text>
+            </View>
+          </View>
+
+          {/* Card 2 - Dynamic */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>ACTIVE FELLOWS</Text>
+            <Text style={styles.cardNumber}>
+              {metrics?.activeFellows || "0"}
+            </Text>
+
+            <View style={styles.progressBg}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: metrics?.deploymentRate || "0%" },
+                ]}
+              />
+            </View>
+            <Text style={styles.smallText}>
+              {metrics?.deploymentRate || "0%"} deployed
+            </Text>
+          </View>
+
+          {/* Grid Cards - Dynamic */}
+          <View style={styles.grid}>
+            <View style={styles.halfCard}>
+              <Text style={styles.cardTitle}>Schools Reached</Text>
+              <Text style={styles.cardValue}>
+                {metrics?.schoolsReached || "0"}
+              </Text>
+              <Text style={styles.cardSub}>
+                Target: {metrics?.schoolsTarget || "150"}
+              </Text>
+            </View>
+
+            <View style={[styles.halfCard, styles.highlightCard]}>
+              <Text style={styles.cardTitleWhite}>Livelihood Programs</Text>
+              <Text style={styles.cardValueWhite}>
+                {metrics?.livelihoodPrograms?.toLocaleString() || "0"}
+              </Text>
+              <Text style={styles.cardSubWhite}>Families Supported</Text>
+            </View>
+          </View>
+
+          {/* CHART WITH AXIS */}
+          <View style={styles.section}>
+            <Text style={styles.heading}>Education Enrollment Growth</Text>
+
+            <View style={styles.chartContainer}>
+              {/* Y Axis */}
+              <View style={styles.yAxis}>
+                {["5k", "4k", "3k", "2k", "1k", "0"].map((label, i) => (
+                  <Text key={i} style={styles.yLabel}>
+                    {label}
                   </Text>
                 ))}
               </View>
+
+              {/* Bars */}
+              <View style={styles.chartArea}>
+                <View style={styles.chart}>
+                  {(metrics?.chartData?.values || [60, 100, 140, 180, 220]).map(
+                    (h: number, i: number) => (
+                      <View key={i} style={[styles.bar, { height: h }]} />
+                    ),
+                  )}
+                </View>
+
+                {/* X Axis */}
+                <View style={styles.xAxis}>
+                  {(
+                    metrics?.chartData?.labels || [
+                      "Jan",
+                      "Feb",
+                      "Mar",
+                      "Apr",
+                      "May",
+                    ]
+                  ).map((m: string, i: number) => (
+                    <Text key={i} style={styles.xLabel}>
+                      {m}
+                    </Text>
+                  ))}
+                </View>
+              </View>
             </View>
           </View>
-        </View>
-        {/* Activity */}
-        <View style={styles.section}>
-          <Text style={styles.heading}>Program Highlights</Text>
 
-          <View style={styles.activity}>
-            <View style={styles.iconBox}>
-              <Ionicons name="leaf-outline" size={18} color="#047857" />
-            </View>
+          {/* Activity / Program Highlights - Dynamic */}
+          <View style={styles.section}>
+            <Text style={styles.heading}>Program Highlights</Text>
 
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>Goat Rearing Phase 2</Text>
-              <Text style={styles.activityText}>
-                Distribution of 500 livestock to identified families in Ward 4
-                completed ahead of schedule.
-              </Text>
-              <Text style={styles.timeText}>2 days ago</Text>
-            </View>
+            {(highlights.length > 0
+              ? highlights
+              : [
+                  {
+                    title: "Goat Rearing Phase 2",
+                    description:
+                      "Distribution of 500 livestock to identified families in Ward 4 completed ahead of schedule.",
+                    time: "2 days ago",
+                    icon: "leaf-outline",
+                  },
+                  {
+                    title: "New Fellows",
+                    description:
+                      "45 new fellows onboarded and assigned to 12 target schools in the northern district.",
+                    time: "5 days ago",
+                    icon: "school-outline",
+                  },
+                ]
+            ).map((activity: any, index: number) => (
+              <View key={index} style={styles.activity}>
+                <View style={styles.iconBox}>
+                  <Ionicons
+                    name={activity.icon || "bulb-outline"}
+                    size={18}
+                    color="#047857"
+                  />
+                </View>
+
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>{activity.title}</Text>
+                  <Text style={styles.activityText}>
+                    {activity.description}
+                  </Text>
+                  <Text style={styles.timeText}>
+                    {activity.time || "Recently"}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
 
-          <View style={styles.activity}>
-            <View style={styles.iconBox}>
-              <Ionicons name="school-outline" size={18} color="#047857" />
-            </View>
-
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>New Fellows</Text>
-              <Text style={styles.activityText}>
-                45 new fellows onboarded and assigned to 12 target schools in
-                the northern district.
-              </Text>
-              <Text style={styles.timeText}>5 days ago</Text>
-            </View>
-          </View>
-        </View>
-        {/* Footer - Only visible when scrolled */}
-        {showFooter && <Footer />}
-      </ScrollView>
-    </View>
+          {/* Footer - Only visible when scrolled */}
+          {showFooter && <Footer />}
+        </ScrollView>
+      </View>
+    </RouteGuard>
   );
 }
 
@@ -834,7 +962,6 @@ const styles = StyleSheet.create({
   },
 
   progressFill: {
-    width: "85%",
     height: "100%",
     backgroundColor: "#047857",
   },

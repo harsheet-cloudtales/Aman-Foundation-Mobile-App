@@ -1,4 +1,6 @@
-import { RoleGuard } from "@/components/RoleGuard";
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -23,7 +25,32 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// Theme Colors
+// ============================================
+// TYPES
+// ============================================
+interface User {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  mobile: string;
+  status: "ACTIVE" | "PENDING" | "INACTIVE" | "REJECTED";
+  role: {
+    name: string;
+  };
+}
+
+interface Role {
+  id: string;
+  name: string;
+  description: string;
+  displayInRegister: boolean;
+  permissions?: string[];
+}
+
+// ============================================
+// THEME COLORS
+// ============================================
 const colors = {
   primary: "#006857",
   primaryContainer: "#00846e",
@@ -53,7 +80,9 @@ const colors = {
   teal: "#14b8a6",
 };
 
-// ---------- Footer Component ----------
+// ============================================
+// FOOTER COMPONENT
+// ============================================
 const Footer = () => {
   return (
     <View style={styles.footer}>
@@ -118,12 +147,18 @@ const Footer = () => {
   );
 };
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function AdminAccessControl() {
+  const { user } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [activeTab, setActiveTab] = useState("users");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -134,16 +169,20 @@ export default function AdminAccessControl() {
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
 
   // Modal states
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
 
   // Data states
-  const [users, setUsers] = useState<any[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+
+  // Form states for add role
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [newRoleDisplayRegister, setNewRoleDisplayRegister] = useState(true);
 
   // Animated values
   const slideAnim = useRef(new Animated.Value(-width)).current;
@@ -151,103 +190,115 @@ export default function AdminAccessControl() {
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
-  // Current user (mock for demo)
-  const currentUser = { roleName: "ADMIN" };
-  const pendingApprovalsCount = users.filter(
-    (u) => u.status === "PENDING",
-  ).length;
+  // ============================================
+  // FETCH DATA
+  // ============================================
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
-  // Mock data
-  const mockUsers = [
-    {
-      id: "1",
-      name: "John Doe",
-      username: "john.doe",
-      email: "john@amanfoundation.org",
-      mobile: "+91 98765 43210",
-      status: "ACTIVE",
-      role: { name: "ADMIN" },
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      username: "jane.smith",
-      email: "jane@amanfoundation.org",
-      mobile: "+91 98765 43211",
-      status: "ACTIVE",
-      role: { name: "MANAGER" },
-    },
-    {
-      id: "3",
-      name: "Alice Johnson",
-      username: "alice.j",
-      email: "alice@amanfoundation.org",
-      mobile: "+91 98765 43212",
-      status: "PENDING",
-      role: { name: "FIELD_STAFF" },
-    },
-    {
-      id: "4",
-      name: "Bob Williams",
-      username: "bob.w",
-      email: "bob@amanfoundation.org",
-      mobile: "+91 98765 43213",
-      status: "INACTIVE",
-      role: { name: "FIELD_STAFF" },
-    },
-    {
-      id: "5",
-      name: "Carol Brown",
-      username: "carol.b",
-      email: "carol@amanfoundation.org",
-      mobile: "+91 98765 43214",
-      status: "PENDING",
-      role: { name: "VOLUNTEER" },
-    },
-  ];
+      // Fetch users
+      const usersData = await api.get<User[]>("/api/users");
+      if (usersData) {
+        setUsers(usersData);
+      }
 
-  const mockRoles = [
-    {
-      id: "1",
-      name: "ADMIN",
-      description: "Full system access with all permissions",
-      displayInRegister: true,
-    },
-    {
-      id: "2",
-      name: "MANAGER",
-      description: "Manage operations and oversee field staff",
-      displayInRegister: true,
-    },
-    {
-      id: "3",
-      name: "FIELD_STAFF",
-      description: "Field operations and data collection",
-      displayInRegister: true,
-    },
-    {
-      id: "4",
-      name: "VOLUNTEER",
-      description: "Limited access for volunteers",
-      displayInRegister: true,
-    },
-  ];
-
-  useEffect(() => {
-    // Simulate API fetch
-    setTimeout(() => {
-      setUsers(mockUsers);
-      setRoles(mockRoles);
+      // Fetch roles
+      const rolesData = await api.get<Role[]>("/api/roles");
+      if (rolesData) {
+        setRoles(rolesData);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Admin data fetch error:", err.message);
+      }
+      // Fallback data
+      setUsers([
+        {
+          id: "1",
+          name: "John Doe",
+          username: "john.doe",
+          email: "john@amanfoundation.org",
+          mobile: "+91 98765 43210",
+          status: "ACTIVE",
+          role: { name: "ADMIN" },
+        },
+        {
+          id: "2",
+          name: "Jane Smith",
+          username: "jane.smith",
+          email: "jane@amanfoundation.org",
+          mobile: "+91 98765 43211",
+          status: "ACTIVE",
+          role: { name: "MANAGER" },
+        },
+        {
+          id: "3",
+          name: "Alice Johnson",
+          username: "alice.j",
+          email: "alice@amanfoundation.org",
+          mobile: "+91 98765 43212",
+          status: "PENDING",
+          role: { name: "FIELD_STAFF" },
+        },
+        {
+          id: "4",
+          name: "Bob Williams",
+          username: "bob.w",
+          email: "bob@amanfoundation.org",
+          mobile: "+91 98765 43213",
+          status: "INACTIVE",
+          role: { name: "FIELD_STAFF" },
+        },
+        {
+          id: "5",
+          name: "Carol Brown",
+          username: "carol.b",
+          email: "carol@amanfoundation.org",
+          mobile: "+91 98765 43214",
+          status: "PENDING",
+          role: { name: "VOLUNTEER" },
+        },
+      ]);
+      setRoles([
+        {
+          id: "1",
+          name: "ADMIN",
+          description: "Full system access with all permissions",
+          displayInRegister: true,
+        },
+        {
+          id: "2",
+          name: "MANAGER",
+          description: "Manage operations and oversee field staff",
+          displayInRegister: true,
+        },
+        {
+          id: "3",
+          name: "FIELD_STAFF",
+          description: "Field operations and data collection",
+          displayInRegister: true,
+        },
+        {
+          id: "4",
+          name: "VOLUNTEER",
+          description: "Limited access for volunteers",
+          displayInRegister: true,
+        },
+      ]);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
-
-  const triggerToast = (msg: string, isError: boolean = false) => {
-    setToastMessage(msg);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+      setRefreshing(false);
+    }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -262,6 +313,16 @@ export default function AdminAccessControl() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -296,11 +357,10 @@ export default function AdminAccessControl() {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
-  // Logout function
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -308,8 +368,7 @@ export default function AdminAccessControl() {
         text: "Logout",
         style: "destructive",
         onPress: () => {
-          triggerToast("Logged out successfully");
-          // Navigate to login page
+          triggerToast("Logged out successfully", "success");
           router.replace("/login");
         },
       },
@@ -318,11 +377,7 @@ export default function AdminAccessControl() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setUsers(mockUsers);
-      setRoles(mockRoles);
-      setRefreshing(false);
-    }, 2000);
+    fetchData();
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
@@ -340,37 +395,98 @@ export default function AdminAccessControl() {
     outputRange: ["0deg", "180deg"],
   });
 
-  const handleStatusUpdate = async (userId: string, newStatus: string) => {
-    setActionLoading(userId);
-    setTimeout(() => {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)),
-      );
-      setActionLoading(null);
-      triggerToast(`User status updated to ${newStatus}.`);
-    }, 500);
+  // ============================================
+  // CRUD OPERATIONS
+  // ============================================
+  const triggerToast = (msg: string, type: "success" | "error" = "success") => {
+    setToastMessage(msg);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
-  const handleDeleteRole = (roleId: string) => {
+  const handleStatusUpdate = async (userId: string, newStatus: string) => {
+    setActionLoading(userId);
+    try {
+      await api.put(`/api/users/${userId}`, { status: newStatus });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, status: newStatus as any } : u,
+        ),
+      );
+      triggerToast(`User status updated to ${newStatus}`, "success");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        triggerToast(err.message, "error");
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string, roleName: string) => {
     Alert.alert(
       "Delete Role",
-      "Are you sure you want to delete this role? This action is permanent.",
+      `Are you sure you want to delete the role "${roleName}"? This action is permanent.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            setRoles((prev) => prev.filter((r) => r.id !== roleId));
-            triggerToast("Role deleted successfully!");
+          onPress: async () => {
+            try {
+              await api.del(`/api/roles/${roleId}`);
+              setRoles((prev) => prev.filter((r) => r.id !== roleId));
+              triggerToast(
+                `Role "${roleName}" deleted successfully!`,
+                "success",
+              );
+            } catch (err) {
+              if (err instanceof ApiError) {
+                triggerToast(err.message, "error");
+              }
+            }
           },
         },
       ],
     );
   };
 
+  const handleAddRole = async () => {
+    if (!newRoleName.trim()) {
+      triggerToast("Role name is required", "error");
+      return;
+    }
+
+    try {
+      const newRole = {
+        name: newRoleName.toUpperCase().replace(/\s+/g, "_"),
+        description: newRoleDescription,
+        displayInRegister: newRoleDisplayRegister,
+      };
+
+      const response = await api.post("/api/roles", newRole);
+      if (response) {
+        setRoles([...roles, response]);
+        triggerToast(`Role "${newRoleName}" created successfully!`, "success");
+        setNewRoleName("");
+        setNewRoleDescription("");
+        setNewRoleDisplayRegister(true);
+        setIsAddRoleOpen(false);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        triggerToast(err.message, "error");
+      }
+    }
+  };
+
+  // ============================================
+  // FILTERS
+  // ============================================
   const pendingUsers = users.filter((u) => u.status === "PENDING");
   const activeOrInactiveUsers = users.filter((u) => u.status !== "PENDING");
+  const pendingApprovalsCount = pendingUsers.length;
 
   const filteredUsers = () => {
     const list =
@@ -386,29 +502,30 @@ export default function AdminAccessControl() {
     );
   };
 
-  if (currentUser?.roleName !== "ADMIN") {
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.accessDeniedContainer}>
-          <MaterialIcons name="shield" size={48} color={colors.rose} />
-          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
-          <Text style={styles.accessDeniedText}>
-            Administrator authorization is required to access this system.
-          </Text>
-        </View>
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading admin data...</Text>
       </SafeAreaView>
     );
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <RoleGuard>
+    <RouteGuard>
       <View style={{ flex: 1 }}>
         {/* OVERLAY */}
         {menuOpen && (
           <TouchableOpacity
             style={styles.overlay}
             activeOpacity={1}
-            onPress={toggleMenu}
+            onPress={closeMenu}
           />
         )}
 
@@ -416,245 +533,271 @@ export default function AdminAccessControl() {
         <Animated.View
           style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <View style={styles.brandContainer}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryContainer]}
-              style={styles.brandIcon}
-            >
-              <MaterialIcons name="local-library" size={22} color="#fff" />
-            </LinearGradient>
-            <View>
-              <Text style={styles.brandTitle}>Aman Foundation</Text>
-              <Text style={styles.brandSub}>Impact Portal</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryContainer]}
+                style={styles.brandIcon}
+              >
+                <MaterialIcons name="local-library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
-          </View>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleNavigation("/")}
-          >
-            <Ionicons name="grid-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>Dashboard</Text>
-          </TouchableOpacity>
-
-          {/* EDUCATION WITH DROPDOWN */}
-          <View>
             <TouchableOpacity
-              style={styles.menuItemWithDropdown}
-              onPress={toggleEducationDropdown}
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
             >
-              <View style={styles.menuItemLeft}>
-                <Ionicons name="school-outline" size={20} color="#4b5563" />
-                <Text style={styles.menuText}>Education</Text>
-              </View>
-              <Animated.View
-                style={{ transform: [{ rotate: rotateEducation }] }}
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
+
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
               >
-                <Ionicons name="chevron-down" size={20} color="#6b7280" />
-              </Animated.View>
-            </TouchableOpacity>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
 
-            {educationDropdownOpen && (
-              <View style={styles.dropdownContainer}>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/education_management_hub")}
-                >
-                  <Ionicons name="library-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Management Hub</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/education_schools_module")}
-                >
-                  <Ionicons name="business-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Schools Overview</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/education_fellows_module")}
-                >
-                  <Ionicons name="people-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Fellows Directory</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/education_students_module")}
-                >
-                  <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Students Directory</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/education_pta_programs")}
-                >
-                  <Ionicons
-                    name="people-circle-outline"
-                    size={18}
-                    color="#6b7280"
-                  />
-                  <Text style={styles.dropdownText}>PTA & Programs</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* LIVELIHOOD WITH DROPDOWN */}
-          <View>
-            <TouchableOpacity
-              style={styles.menuItemWithDropdown}
-              onPress={toggleLivelihoodDropdown}
-            >
-              <View style={styles.menuItemLeft}>
-                <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-                <Text style={styles.menuText}>Livelihood</Text>
-              </View>
-              <Animated.View
-                style={{ transform: [{ rotate: rotateLivelihood }] }}
-              >
-                <Ionicons name="chevron-down" size={20} color="#6b7280" />
-              </Animated.View>
-            </TouchableOpacity>
-
-            {livelihoodDropdownOpen && (
-              <View style={styles.dropdownContainer}>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/livelihood_management_hub")}
-                >
-                  <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Management Hub</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-                >
-                  <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Goat Rearing</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() =>
-                    handleNavigation("/livelihood_sugarcane_cultivation")
-                  }
-                >
-                  <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Agriculture Support</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() =>
-                    handleNavigation("/beneficiary_master_profile")
-                  }
-                >
-                  <Ionicons
-                    name="people-circle-outline"
-                    size={18}
-                    color="#6b7280"
-                  />
-                  <Text style={styles.dropdownText}>Beneficiaries</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleNavigation("/disaster_relief_management")}
-          >
-            <Ionicons name="snow-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>Disaster Relief</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleNavigation("/hr_employee_management")}
-          >
-            <Ionicons name="people-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>HR Management</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, styles.menuItemActive]}
-            onPress={() => handleNavigation("/admin_access_control")}
-          >
-            <Ionicons name="document-text-outline" size={20} color="#fff" />
-            <Text style={styles.menuTextActive}>Admin & Access</Text>
-          </TouchableOpacity>
-
-          {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-          <View style={styles.menuDivider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ACCOUNT</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleNavigation("/profile")}
-          >
-            <Ionicons name="person-outline" size={20} color="#4b5563" />
-            <Text style={styles.menuText}>My Profile</Text>
-          </TouchableOpacity>
-
-          <View>
-            <TouchableOpacity
-              style={styles.menuItemWithDropdown}
-              onPress={toggleAuthDropdown}
-            >
-              <View style={styles.menuItemLeft}>
-                <Ionicons name="key-outline" size={20} color="#4b5563" />
-                <Text style={styles.menuText}>Authentication</Text>
-              </View>
-              <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-                <Ionicons name="chevron-down" size={20} color="#6b7280" />
-              </Animated.View>
-            </TouchableOpacity>
-
-            {authDropdownOpen && (
-              <View style={styles.dropdownContainer}>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    toggleMenu();
-                    router.push("/login");
-                  }}
-                >
-                  <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                  <Text style={styles.dropdownText}>Login Page</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    toggleMenu();
-                    router.push("/register");
-                  }}
-                >
-                  <Ionicons
-                    name="person-add-outline"
-                    size={18}
-                    color="#6b7280"
-                  />
-                  <Text style={styles.dropdownText}>Register Page</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                  onPress={handleLogout}
-                >
-                  <Ionicons
-                    name="log-out-outline"
-                    size={18}
-                    color={colors.rose}
-                  />
-                  <Text
-                    style={[styles.dropdownText, styles.dropdownTextLogout]}
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
                   >
-                    Logout
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Students Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PTA & Programs</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuItem, styles.menuItemActive]}
+              onPress={() => handleNavigation("/admin_access_control")}
+            >
+              <Ionicons name="document-text-outline" size={20} color="#fff" />
+              <Text style={styles.menuTextActive}>Admin & Access</Text>
+            </TouchableOpacity>
+
+            {/* AUTHENTICATION SECTION */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/profile")}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={colors.rose}
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         </Animated.View>
 
         {/* MAIN CONTENT */}
@@ -693,7 +836,9 @@ export default function AdminAccessControl() {
               <TouchableOpacity onPress={() => router.push("/profile")}>
                 <Image
                   source={{
-                    uri: "https://randomuser.me/api/portraits/women/68.jpg",
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
                   }}
                   style={styles.avatar}
                 />
@@ -866,296 +1011,270 @@ export default function AdminAccessControl() {
               </View>
             )}
 
-            {/* Loading State */}
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-              </View>
-            ) : (
-              <>
-                {/* USERS / APPROVALS TAB */}
-                {(activeTab === "users" || activeTab === "approvals") &&
-                  (filteredUsers().length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <MaterialIcons
-                        name="check-circle"
-                        size={48}
-                        color="#9ca3af"
-                      />
-                      <Text style={styles.emptyStateTitle}>
-                        No entries found
+            {/* USERS / APPROVALS TAB */}
+            {(activeTab === "users" || activeTab === "approvals") &&
+              (filteredUsers().length === 0 ? (
+                <View style={styles.emptyState}>
+                  <MaterialIcons
+                    name="check-circle"
+                    size={48}
+                    color="#9ca3af"
+                  />
+                  <Text style={styles.emptyStateTitle}>No entries found</Text>
+                  <Text style={styles.emptyStateText}>
+                    There are no matches for your query in this section.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                  <View style={styles.tableContainer}>
+                    {/* Table Header */}
+                    <View style={styles.tableHeader}>
+                      <Text style={[styles.headerCell, styles.headerName]}>
+                        Name
                       </Text>
-                      <Text style={styles.emptyStateText}>
-                        There are no matches for your query in this section.
+                      <Text style={[styles.headerCell, styles.headerUsername]}>
+                        Username
+                      </Text>
+                      <Text style={[styles.headerCell, styles.headerEmail]}>
+                        Email Address
+                      </Text>
+                      <Text style={[styles.headerCell, styles.headerMobile]}>
+                        Mobile
+                      </Text>
+                      <Text style={[styles.headerCell, styles.headerRoleCol]}>
+                        Role
+                      </Text>
+                      <Text style={[styles.headerCell, styles.headerStatusCol]}>
+                        Status
+                      </Text>
+                      <Text style={[styles.headerCell, styles.headerActions]}>
+                        Actions
                       </Text>
                     </View>
-                  ) : (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={true}
-                    >
-                      <View style={styles.tableContainer}>
-                        {/* Table Header */}
-                        <View style={styles.tableHeader}>
-                          <Text style={[styles.headerCell, styles.headerName]}>
-                            Name
-                          </Text>
-                          <Text
-                            style={[styles.headerCell, styles.headerUsername]}
-                          >
-                            Username
-                          </Text>
-                          <Text style={[styles.headerCell, styles.headerEmail]}>
-                            Email Address
-                          </Text>
-                          <Text
-                            style={[styles.headerCell, styles.headerMobile]}
-                          >
-                            Mobile
-                          </Text>
-                          <Text
-                            style={[styles.headerCell, styles.headerRoleCol]}
-                          >
-                            Role
-                          </Text>
-                          <Text
-                            style={[styles.headerCell, styles.headerStatusCol]}
-                          >
-                            Status
-                          </Text>
-                          <Text
-                            style={[styles.headerCell, styles.headerActions]}
-                          >
-                            Actions
+
+                    {/* Table Rows */}
+                    {filteredUsers().map((userItem) => (
+                      <View key={userItem.id} style={styles.tableRow}>
+                        <View style={[styles.rowCell, styles.rowNameCell]}>
+                          <View style={styles.userAvatar}>
+                            <Text style={styles.userAvatarText}>
+                              {(userItem.name || userItem.username)
+                                .charAt(0)
+                                .toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.rowName}>
+                            {userItem.name || userItem.username}
                           </Text>
                         </View>
-
-                        {/* Table Rows */}
-                        {filteredUsers().map((user, idx) => (
-                          <View key={user.id} style={styles.tableRow}>
-                            <View style={[styles.rowCell, styles.rowNameCell]}>
-                              <View style={styles.userAvatar}>
-                                <Text style={styles.userAvatarText}>
-                                  {(user.name || user.username)
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </Text>
-                              </View>
-                              <Text style={styles.rowName}>
-                                {user.name || user.username}
-                              </Text>
-                            </View>
-                            <Text style={[styles.rowCell, styles.rowUsername]}>
-                              @{user.username}
+                        <Text style={[styles.rowCell, styles.rowUsername]}>
+                          @{userItem.username}
+                        </Text>
+                        <Text style={[styles.rowCell, styles.rowEmail]}>
+                          {userItem.email}
+                        </Text>
+                        <Text style={[styles.rowCell, styles.rowMobile]}>
+                          {userItem.mobile || "—"}
+                        </Text>
+                        <View style={[styles.rowCell, styles.rowRole]}>
+                          <Text style={styles.roleBadge}>
+                            {userItem.role?.name?.replace("_", " ") || "N/A"}
+                          </Text>
+                        </View>
+                        <View style={[styles.rowCell, styles.rowStatus]}>
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              userItem.status === "ACTIVE"
+                                ? styles.statusActive
+                                : userItem.status === "PENDING"
+                                  ? styles.statusPending
+                                  : styles.statusInactive,
+                            ]}
+                          >
+                            <Text style={styles.statusBadgeText}>
+                              {userItem.status}
                             </Text>
-                            <Text style={[styles.rowCell, styles.rowEmail]}>
-                              {user.email}
-                            </Text>
-                            <Text style={[styles.rowCell, styles.rowMobile]}>
-                              {user.mobile || "—"}
-                            </Text>
-                            <View style={[styles.rowCell, styles.rowRole]}>
-                              <Text style={styles.roleBadge}>
-                                {user.role?.name?.replace("_", " ") || "N/A"}
-                              </Text>
-                            </View>
-                            <View style={[styles.rowCell, styles.rowStatus]}>
-                              <View
-                                style={[
-                                  styles.statusBadge,
-                                  user.status === "ACTIVE"
-                                    ? styles.statusActive
-                                    : user.status === "PENDING"
-                                      ? styles.statusPending
-                                      : styles.statusInactive,
-                                ]}
+                          </View>
+                        </View>
+                        <View style={[styles.rowCell, styles.rowActions]}>
+                          {activeTab === "approvals" ? (
+                            <View style={styles.actionButtonsRow}>
+                              <TouchableOpacity
+                                style={styles.approveButton}
+                                onPress={() =>
+                                  handleStatusUpdate(userItem.id, "ACTIVE")
+                                }
+                                disabled={actionLoading === userItem.id}
                               >
-                                <Text style={styles.statusBadgeText}>
-                                  {user.status}
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={[styles.rowCell, styles.rowActions]}>
-                              {activeTab === "approvals" ? (
-                                <View style={styles.actionButtonsRow}>
-                                  <TouchableOpacity
-                                    style={styles.approveButton}
-                                    onPress={() =>
-                                      handleStatusUpdate(user.id, "ACTIVE")
-                                    }
-                                    disabled={actionLoading === user.id}
-                                  >
-                                    {actionLoading === user.id ? (
-                                      <ActivityIndicator
-                                        size="small"
-                                        color="white"
-                                      />
-                                    ) : (
-                                      <>
-                                        <MaterialIcons
-                                          name="check-circle"
-                                          size={12}
-                                          color="white"
-                                        />
-                                        <Text style={styles.approveButtonText}>
-                                          Approve
-                                        </Text>
-                                      </>
-                                    )}
-                                  </TouchableOpacity>
-                                  <TouchableOpacity
-                                    style={styles.rejectButton}
-                                    onPress={() =>
-                                      handleStatusUpdate(user.id, "REJECTED")
-                                    }
-                                    disabled={actionLoading === user.id}
-                                  >
+                                {actionLoading === userItem.id ? (
+                                  <ActivityIndicator
+                                    size="small"
+                                    color="white"
+                                  />
+                                ) : (
+                                  <>
                                     <MaterialIcons
-                                      name="cancel"
+                                      name="check-circle"
                                       size={12}
                                       color="white"
                                     />
-                                    <Text style={styles.rejectButtonText}>
-                                      Reject
+                                    <Text style={styles.approveButtonText}>
+                                      Approve
                                     </Text>
-                                  </TouchableOpacity>
-                                </View>
-                              ) : (
-                                <View style={styles.actionButtonsRow}>
-                                  {user.status !== "ACTIVE" ? (
-                                    <TouchableOpacity
-                                      style={styles.activateButton}
-                                      onPress={() =>
-                                        handleStatusUpdate(user.id, "ACTIVE")
-                                      }
-                                    >
-                                      <MaterialIcons
-                                        name="check-circle"
-                                        size={12}
-                                        color={colors.emerald}
-                                      />
-                                      <Text style={styles.activateButtonText}>
-                                        Activate
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ) : (
-                                    <TouchableOpacity
-                                      style={styles.deactivateButton}
-                                      onPress={() =>
-                                        handleStatusUpdate(user.id, "INACTIVE")
-                                      }
-                                    >
-                                      <MaterialIcons
-                                        name="cancel"
-                                        size={12}
-                                        color={colors.rose}
-                                      />
-                                      <Text style={styles.deactivateButtonText}>
-                                        Deactivate
-                                      </Text>
-                                    </TouchableOpacity>
-                                  )}
-                                  <TouchableOpacity
-                                    style={styles.permissionsButton}
-                                    onPress={() => {
-                                      setSelectedUser(user);
-                                      setIsUserModalOpen(true);
-                                    }}
-                                  >
-                                    <MaterialIcons
-                                      name="shield"
-                                      size={12}
-                                      color={colors.teal}
-                                    />
-                                    <Text style={styles.permissionsButtonText}>
-                                      Edit Permissions
-                                    </Text>
-                                  </TouchableOpacity>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  ))}
-
-                {/* ROLES TAB */}
-                {activeTab === "roles" && (
-                  <View style={styles.rolesGrid}>
-                    {roles.map((role) => {
-                      const isAdmin = role.name === "ADMIN";
-                      return (
-                        <View key={role.id} style={styles.roleCard}>
-                          <View style={styles.roleCardHeader}>
-                            <View style={styles.roleIcon}>
-                              <MaterialIcons
-                                name="shield"
-                                size={20}
-                                color={colors.teal}
-                              />
-                            </View>
-                            <View
-                              style={[
-                                styles.roleVisibilityBadge,
-                                role.displayInRegister
-                                  ? styles.roleVisible
-                                  : styles.roleHidden,
-                              ]}
-                            >
-                              <Text style={styles.roleVisibilityText}>
-                                {role.displayInRegister
-                                  ? "Register Visible"
-                                  : "Hidden Role"}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={styles.roleName}>
-                            {role.name.replace("_", " ")}
-                          </Text>
-                          <Text style={styles.roleDescription}>
-                            {role.description ||
-                              "Provides default capability profile inside system apps."}
-                          </Text>
-                          {!isAdmin && (
-                            <View style={styles.roleActions}>
+                                  </>
+                                )}
+                              </TouchableOpacity>
                               <TouchableOpacity
-                                style={styles.rolePermissionsButton}
+                                style={styles.rejectButton}
+                                onPress={() =>
+                                  handleStatusUpdate(userItem.id, "REJECTED")
+                                }
+                                disabled={actionLoading === userItem.id}
+                              >
+                                <MaterialIcons
+                                  name="cancel"
+                                  size={12}
+                                  color="white"
+                                />
+                                <Text style={styles.rejectButtonText}>
+                                  Reject
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <View style={styles.actionButtonsRow}>
+                              {userItem.status !== "ACTIVE" ? (
+                                <TouchableOpacity
+                                  style={styles.activateButton}
+                                  onPress={() =>
+                                    handleStatusUpdate(userItem.id, "ACTIVE")
+                                  }
+                                >
+                                  <MaterialIcons
+                                    name="check-circle"
+                                    size={12}
+                                    color={colors.emerald}
+                                  />
+                                  <Text style={styles.activateButtonText}>
+                                    Activate
+                                  </Text>
+                                </TouchableOpacity>
+                              ) : (
+                                <TouchableOpacity
+                                  style={styles.deactivateButton}
+                                  onPress={() =>
+                                    handleStatusUpdate(userItem.id, "INACTIVE")
+                                  }
+                                >
+                                  <MaterialIcons
+                                    name="cancel"
+                                    size={12}
+                                    color={colors.rose}
+                                  />
+                                  <Text style={styles.deactivateButtonText}>
+                                    Deactivate
+                                  </Text>
+                                </TouchableOpacity>
+                              )}
+                              <TouchableOpacity
+                                style={styles.permissionsButton}
                                 onPress={() => {
-                                  setSelectedRole(role);
-                                  setIsRoleModalOpen(true);
+                                  setSelectedUser(userItem);
+                                  setIsUserModalOpen(true);
                                 }}
                               >
                                 <MaterialIcons
-                                  name="edit"
-                                  size={14}
+                                  name="shield"
+                                  size={12}
                                   color={colors.teal}
                                 />
-                                <Text style={styles.rolePermissionsText}>
-                                  Permissions
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.roleDeleteButton}
-                                onPress={() => handleDeleteRole(role.id)}
-                              >
-                                <MaterialIcons
-                                  name="delete"
-                                  size={14}
-                                  color={colors.rose}
-                                />
-                                <Text style={styles.roleDeleteText}>
-                                  Delete
+                                <Text style={styles.permissionsButtonText}>
+                                  Edit Permissions
                                 </Text>
                               </TouchableOpacity>
                             </View>
                           )}
                         </View>
-                      );
-                    })}
+                      </View>
+                    ))}
                   </View>
-                )}
-              </>
+                </ScrollView>
+              ))}
+
+            {/* ROLES TAB */}
+            {activeTab === "roles" && (
+              <View style={styles.rolesGrid}>
+                {roles.map((role) => {
+                  const isAdmin = role.name === "ADMIN";
+                  return (
+                    <View key={role.id} style={styles.roleCard}>
+                      <View style={styles.roleCardHeader}>
+                        <View style={styles.roleIcon}>
+                          <MaterialIcons
+                            name="shield"
+                            size={20}
+                            color={colors.teal}
+                          />
+                        </View>
+                        <View
+                          style={[
+                            styles.roleVisibilityBadge,
+                            role.displayInRegister
+                              ? styles.roleVisible
+                              : styles.roleHidden,
+                          ]}
+                        >
+                          <Text style={styles.roleVisibilityText}>
+                            {role.displayInRegister
+                              ? "Register Visible"
+                              : "Hidden Role"}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.roleName}>
+                        {role.name.replace("_", " ")}
+                      </Text>
+                      <Text style={styles.roleDescription}>
+                        {role.description ||
+                          "Provides default capability profile inside system apps."}
+                      </Text>
+                      {!isAdmin && (
+                        <View style={styles.roleActions}>
+                          <TouchableOpacity
+                            style={styles.rolePermissionsButton}
+                            onPress={() => {
+                              setSelectedRole(role);
+                              setIsRoleModalOpen(true);
+                            }}
+                          >
+                            <MaterialIcons
+                              name="edit"
+                              size={14}
+                              color={colors.teal}
+                            />
+                            <Text style={styles.rolePermissionsText}>
+                              Permissions
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.roleDeleteButton}
+                            onPress={() => handleDeleteRole(role.id, role.name)}
+                          >
+                            <MaterialIcons
+                              name="delete"
+                              size={14}
+                              color={colors.rose}
+                            />
+                            <Text style={styles.roleDeleteText}>Delete</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             )}
 
             {/* Footer */}
@@ -1312,6 +1431,8 @@ export default function AdminAccessControl() {
                     style={styles.formInput}
                     placeholder="e.g., SUPERVISOR"
                     placeholderTextColor="#9ca3af"
+                    value={newRoleName}
+                    onChangeText={setNewRoleName}
                   />
                 </View>
                 <View style={styles.formGroup}>
@@ -1320,16 +1441,29 @@ export default function AdminAccessControl() {
                     style={[styles.formInput, styles.textArea]}
                     placeholder="Role description"
                     placeholderTextColor="#9ca3af"
+                    value={newRoleDescription}
+                    onChangeText={setNewRoleDescription}
                     multiline
                     numberOfLines={3}
                   />
                 </View>
                 <View style={styles.formGroup}>
-                  <TouchableOpacity style={styles.checkboxRow}>
+                  <TouchableOpacity
+                    style={styles.checkboxRow}
+                    onPress={() =>
+                      setNewRoleDisplayRegister(!newRoleDisplayRegister)
+                    }
+                  >
                     <MaterialIcons
-                      name="check-box-outline-blank"
+                      name={
+                        newRoleDisplayRegister
+                          ? "check-box"
+                          : "check-box-outline-blank"
+                      }
                       size={20}
-                      color="#9ca3af"
+                      color={
+                        newRoleDisplayRegister ? colors.primary : "#9ca3af"
+                      }
                     />
                     <Text style={styles.checkboxLabel}>
                       Display in Registration
@@ -1345,10 +1479,7 @@ export default function AdminAccessControl() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.createModalButton}
-                    onPress={() => {
-                      triggerToast("Role created successfully!");
-                      setIsAddRoleOpen(false);
-                    }}
+                    onPress={handleAddRole}
                   >
                     <Text style={styles.createModalButtonText}>
                       Create Role
@@ -1362,21 +1493,38 @@ export default function AdminAccessControl() {
 
         {/* Toast Notification */}
         {showToast && (
-          <View style={styles.toast}>
+          <View
+            style={[styles.toast, toastType === "error" && styles.toastError]}
+          >
             <MaterialIcons
-              name="check-circle"
+              name={toastType === "success" ? "check-circle" : "error-outline"}
               size={18}
-              color={colors.emerald}
+              color={toastType === "success" ? colors.emerald : colors.rose}
             />
             <Text style={styles.toastText}>{toastMessage}</Text>
           </View>
         )}
       </View>
-    </RoleGuard>
+    </RouteGuard>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
   // Sidebar Styles
   overlay: {
     position: "absolute",
@@ -1476,7 +1624,6 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     marginLeft: 10,
   },
-  // Authentication dropdown styles
   menuDivider: {
     flexDirection: "row",
     alignItems: "center",
@@ -1561,24 +1708,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textTransform: "uppercase",
     color: "#64748b",
-  },
-  accessDeniedContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  accessDeniedTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.rose,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  accessDeniedText: {
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-    textAlign: "center",
   },
   pageHeader: {
     marginBottom: 20,
@@ -1720,10 +1849,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     fontSize: 13,
     color: colors.onSurface,
-  },
-  loadingContainer: {
-    paddingVertical: 60,
-    alignItems: "center",
   },
   emptyState: {
     alignItems: "center",
@@ -2192,6 +2317,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 200,
+  },
+  toastError: {
+    backgroundColor: "#7f1d1d",
   },
   toastText: {
     fontSize: 12,

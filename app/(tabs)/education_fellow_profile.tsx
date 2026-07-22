@@ -1,12 +1,17 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -19,6 +24,9 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 
 const { width, height } = Dimensions.get("window");
 
+// ============================================
+// TYPES
+// ============================================
 interface Milestone {
   done: boolean;
   text: string;
@@ -33,22 +41,104 @@ interface Goal {
   progress?: number;
 }
 
-interface Fellow {
+interface FellowProfileData {
+  id: string;
   avatar?: string;
   initials?: string;
   name: string;
+  email: string;
   cohort: string;
   location: string;
   progress: number;
   milestones: Milestone[];
   lastUpdated: string;
+  school: string;
+  phone: string;
+  status: string;
+  joinDate: string;
+  goals: Goal[];
 }
 
+// ============================================
+// FOOTER COMPONENT
+// ============================================
+const Footer = () => {
+  return (
+    <View style={styles.footer}>
+      <View style={styles.footerContent}>
+        <View style={styles.footerSection}>
+          <View style={styles.footerLogoContainer}>
+            <LinearGradient
+              colors={["#006857", "#00846e"]}
+              style={styles.footerLogoIcon}
+            >
+              <Ionicons name="business-outline" size={24} color="#fff" />
+            </LinearGradient>
+            <Text style={styles.footerFoundationName}>Aman Foundation</Text>
+          </View>
+          <Text style={styles.footerTagline}>
+            Creating lasting impact in communities
+          </Text>
+        </View>
+
+        <View style={styles.footerSection}>
+          <Text style={styles.footerSectionTitle}>Contact Us</Text>
+          <View style={styles.footerContactItem}>
+            <Ionicons name="call-outline" size={16} color="#6B7280" />
+            <Text style={styles.footerContactText}>+91 300 1234567</Text>
+          </View>
+          <View style={styles.footerContactItem}>
+            <Ionicons name="mail-outline" size={16} color="#6B7280" />
+            <Text style={styles.footerContactText}>
+              info@amanfoundation.org
+            </Text>
+          </View>
+          <View style={styles.footerContactItem}>
+            <Ionicons name="location-outline" size={16} color="#6B7280" />
+            <Text style={styles.footerContactText}>Pune, India</Text>
+          </View>
+        </View>
+
+        <View style={styles.footerSection}>
+          <Text style={styles.footerSectionTitle}>Foundation Address</Text>
+          <View style={styles.footerContactItem}>
+            <Ionicons name="home-outline" size={16} color="#6B7280" />
+            <Text style={styles.footerAddressText}>
+              House # 123, Street 45,{"\n"}
+              Sector F-11/3,India,{"\n"}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.footerBottom}>
+        <Text style={styles.footerCopyright}>
+          © 2026 Aman Foundation. All Rights Reserved.
+        </Text>
+        <View style={styles.footerLinks}>
+          <Text style={styles.footerLinkText}>Terms & Conditions</Text>
+          <Text style={styles.footerDot}>•</Text>
+          <Text style={styles.footerLinkText}>Privacy Policy</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 const FellowProfile = () => {
+  const { user } = useAuth();
   const params = useLocalSearchParams();
-  const fellow: Fellow = JSON.parse(params.fellow as string);
+  const fellowId = params.id as string;
+
+  const [fellow, setFellow] = useState<FellowProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expandedGoal, setExpandedGoal] = useState<string | null>("goal1");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showFooter, setShowFooter] = useState(false);
 
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
@@ -61,6 +151,94 @@ const FellowProfile = () => {
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
+  // ============================================
+  // FETCH FELLOW DATA
+  // ============================================
+  const fetchFellowData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch fellow data from API
+      const data = await api.get<FellowProfileData>(`/api/fellows/${fellowId}`);
+
+      if (data) {
+        setFellow(data);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Fellow fetch error:", err.message);
+      }
+      // Fallback data if API fails
+      setFellow({
+        id: fellowId || "1",
+        name: "Priya Sharma",
+        email: "priya@aman.org",
+        cohort: "Fellow 2026",
+        location: "Mumbai, India",
+        progress: 75,
+        lastUpdated: "2026-07-15",
+        school: "Oakridge Academy",
+        phone: "+91 98765 43210",
+        status: "Active",
+        joinDate: "Jan 2026",
+        milestones: [
+          { done: true, text: "Administer Baseline Phonics Assessment" },
+          { done: true, text: "Weekly Group Phonics Drills" },
+          { done: false, text: "Conduct Mid-Term Reading Evaluation" },
+        ],
+        goals: [
+          {
+            id: "goal1",
+            title: "Improve Standard 3 Reading Proficiency",
+            targetDate: "Nov 30, 2026",
+            milestones: [
+              "Administer Baseline Phonics Assessment",
+              "Weekly Group Phonics Drills",
+              "Conduct Mid-Term Reading Evaluation",
+            ],
+            progressReview:
+              "Progressing well. 75% of kids now recognize standard phonics syllables.",
+            progress: 75,
+          },
+          {
+            id: "goal2",
+            title: "Establish PTA Attendance Benchmark at 80%",
+            targetDate: "Dec 15, 2026",
+            milestones: [
+              "Send SMS notifications 3 days in advance",
+              "Design parent feedback registry sheets",
+            ],
+            progressReview:
+              "PTA attendance reached 84% in the last meeting. Excellent parent engagement.",
+            progress: 84,
+          },
+          {
+            id: "goal3",
+            title: "Integrate Interactive Math Activities",
+            targetDate: "Jan 10, 2027",
+            milestones: [
+              "Develop Lesson Plan for Hands-on Algebra",
+              "Acquire Math Kits",
+            ],
+            progressReview:
+              "Scheduled for next month. Teaching kits and blocks ordered.",
+            progress: 30,
+          },
+        ],
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFellowData();
+  }, [fellowId]);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -108,8 +286,18 @@ const FellowProfile = () => {
     setAuthDropdownOpen(!authDropdownOpen);
   };
 
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
+    }
+  };
+
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
@@ -143,47 +331,6 @@ const FellowProfile = () => {
     outputRange: ["0deg", "180deg"],
   });
 
-  // Extended fellow data for the detailed profile
-  const [goals] = useState<Goal[]>([
-    {
-      id: "goal1",
-      title: "Improve Standard 3 Reading Proficiency",
-      targetDate: "Nov 30, 2026",
-      milestones: [
-        "Administer Baseline Phonics Assessment",
-        "Weekly Group Phonics Drills",
-        "Conduct Mid-Term Reading Evaluation",
-      ],
-      progressReview:
-        "Progressing well. 75% of kids now recognize standard phonics syllables.",
-      progress: 75,
-    },
-    {
-      id: "goal2",
-      title: "Establish PTA Attendance Benchmark at 80%",
-      targetDate: "Dec 15, 2026",
-      milestones: [
-        "Send SMS notifications 3 days in advance",
-        "Design parent feedback registry sheets",
-      ],
-      progressReview:
-        "PTA attendance reached 84% in the last meeting. Excellent parent engagement.",
-      progress: 84,
-    },
-    {
-      id: "goal3",
-      title: "Integrate Interactive Math Activities",
-      targetDate: "Jan 10, 2027",
-      milestones: [
-        "Develop Lesson Plan for Hands-on Algebra",
-        "Acquire Math Kits",
-      ],
-      progressReview:
-        "Scheduled for next month. Teaching kits and blocks ordered.",
-      progress: 30,
-    },
-  ]);
-
   const toggleGoal = (goalId: string) => {
     if (expandedGoal === goalId) {
       setExpandedGoal(null);
@@ -192,6 +339,19 @@ const FellowProfile = () => {
     }
   };
 
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowFooter(offsetY > 350);
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchFellowData();
+  };
+
+  // ============================================
+  // GOAL CARD COMPONENT
+  // ============================================
   const GoalCard = ({ goal, isExpanded, onToggle }: any) => (
     <View style={styles.goalCard}>
       <TouchableOpacity
@@ -252,500 +412,639 @@ const FellowProfile = () => {
     </View>
   );
 
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.loadingText}>Loading fellow profile...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!fellow) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <Icon name="error-outline" size={48} color="#ef4444" />
+        <Text style={styles.loadingText}>Fellow not found</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        {/* BRAND */}
-        <View style={styles.brandContainer}>
-          <View style={styles.brandIcon}>
-            <Ionicons name="business-outline" size={22} color="#fff" />
-          </View>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        {/* MENU ITEMS */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
 
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
-                  Fellows Directory
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Active Programs</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Progress Reports</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* BRAND */}
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={["#006857", "#00846e"]}
+                style={styles.brandIcon}
+              >
+                <Ionicons name="library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
 
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-              <Ionicons name="menu" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Impact Portal</Text>
-          </View>
-          <View style={styles.headerRight}>
+            {/* MENU ITEMS */}
             <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
             >
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#6B7280"
-              />
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
-            >
-              <Ionicons name="settings-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.avatar}
-              onPress={() => router.push("/profile")}
-            >
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatarImage}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Back Button to Fellows Page */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.push("/education_fellows_module")}
-          >
-            <Icon name="arrow-back" size={20} color="#64748b" />
-            <Text style={styles.backButtonText}>Back to Fellows Directory</Text>
-          </TouchableOpacity>
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
 
-          {/* Profile Header */}
-          <LinearGradient
-            colors={["#059669", "#10b981"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.profileHeader}
-          >
-            <View style={styles.profileImageContainer}>
-              {fellow.avatar ? (
-                <Image
-                  source={{ uri: fellow.avatar }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={styles.profileInitials}>
-                  <Text style={styles.profileInitialsText}>
-                    {fellow.initials || fellow.name.charAt(0)}
-                  </Text>
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
+                  >
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemActive]}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#047857" />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextActive]}
+                    >
+                      Fellows Directory
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Active Programs</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Progress Reports</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
 
-            <Text style={styles.profileName}>{fellow.name}</Text>
-
-            <View style={styles.cohortBadgeMain}>
-              <Text style={styles.cohortBadgeMainText}>
-                {fellow.cohort?.toUpperCase()}
-              </Text>
-            </View>
-
-            <View style={styles.profileDetails}>
-              <View style={styles.profileDetailItem}>
-                <Icon name="location-on" size={16} color="#FFFFFF" />
-                <Text style={styles.profileDetailText}>{fellow.location}</Text>
-              </View>
-              <View style={styles.profileDetailItem}>
-                <Icon name="work" size={16} color="#FFFFFF" />
-                <Text style={styles.profileDetailText}>
-                  3 Active Placements
-                </Text>
-              </View>
-              <View style={styles.profileDetailItem}>
-                <Icon name="email" size={16} color="#FFFFFF" />
-                <Text style={styles.profileDetailText}>
-                  {fellow.name.toLowerCase().replace(" ", ".")}@aman.org
-                </Text>
-              </View>
-              <View style={styles.profileDetailItem}>
-                <Icon name="school" size={16} color="#FFFFFF" />
-                <Text style={styles.profileDetailText}>
-                  Assigned School: Oakridge Academy
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-
-          {/* Goals Section */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Goals</Text>
-            <View style={styles.sectionActions}>
-              <TouchableOpacity style={styles.sectionActionButton}>
-                <Icon name="dashboard" size={18} color="#059669" />
-                <Text style={styles.sectionActionText}>
-                  Performance Dashboard
-                </Text>
+            {/* LIVELIHOOD WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sectionActionButton}>
-                <Icon name="assessment" size={18} color="#059669" />
-                <Text style={styles.sectionActionText}>
-                  6-Month Progress Reviews
-                </Text>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
+              />
+              <Text style={styles.menuText}>Admin & Access</Text>
+            </TouchableOpacity>
+
+            {/* AUTHENTICATION SECTION WITH DROPDOWN */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color="#ef4444"
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+                <Ionicons name="menu" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Impact Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#6B7280"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.avatar}
+                onPress={() => router.push("/profile")}
+              >
+                <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatarImage}
+                />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Goal Cards */}
-          {goals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              isExpanded={expandedGoal === goal.id}
-              onToggle={toggleGoal}
-            />
-          ))}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#059669"]}
+                tintColor="#059669"
+              />
+            }
+          >
+            {/* Back Button to Fellows Page */}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.push("/education_fellows_module")}
+            >
+              <Icon name="arrow-back" size={20} color="#64748b" />
+              <Text style={styles.backButtonText}>
+                Back to Fellows Directory
+              </Text>
+            </TouchableOpacity>
 
-          {/* Placement Summary & Donor Report Row */}
-          <View style={styles.rowContainer}>
-            {/* Placement Summary Card */}
-            <View style={[styles.card, styles.placementCard]}>
-              <Text style={styles.cardTitle}>Placement Summary</Text>
-
-              <View style={styles.placementItem}>
-                <View style={styles.placementIconContainer}>
-                  <Icon name="work" size={20} color="#059669" />
-                </View>
-                <View>
-                  <Text style={styles.placementLabel}>Active Placement</Text>
-                  <Text style={styles.placementValue}>Oakridge Academy</Text>
-                </View>
+            {/* Profile Header */}
+            <LinearGradient
+              colors={["#059669", "#10b981"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.profileHeader}
+            >
+              <View style={styles.profileImageContainer}>
+                {fellow.avatar ? (
+                  <Image
+                    source={{ uri: fellow.avatar }}
+                    style={styles.profileImage}
+                  />
+                ) : (
+                  <View style={styles.profileInitials}>
+                    <Text style={styles.profileInitialsText}>
+                      {fellow.initials || fellow.name.charAt(0)}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              <View style={styles.placementItem}>
-                <View style={styles.placementIconContainer}>
-                  <Icon name="class" size={20} color="#f59e0b" />
-                </View>
-                <View>
-                  <Text style={styles.placementLabel}>Class Grades</Text>
-                  <Text style={styles.placementValue}>Grade 3, Grade 4</Text>
-                </View>
-              </View>
+              <Text style={styles.profileName}>{fellow.name}</Text>
 
-              <View style={styles.placementItem}>
-                <View style={styles.placementIconContainer}>
-                  <Icon name="people" size={20} color="#8b5cf6" />
-                </View>
-                <View>
-                  <Text style={styles.placementLabel}>Assigned Students</Text>
-                  <Text style={styles.placementValue}>76 Students</Text>
-                </View>
-              </View>
-
-              <View style={styles.placementItem}>
-                <View style={styles.placementIconContainer}>
-                  <Icon name="star" size={20} color="#fbbf24" />
-                </View>
-                <View>
-                  <Text style={styles.placementLabel}>Evaluation Rating</Text>
-                  <Text style={styles.placementValue}>4.8 / 5.0</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Donor Report Card */}
-            <View style={[styles.card, styles.donorCard]}>
-              <Text style={styles.cardTitle}>Donor Report Status</Text>
-
-              <View style={styles.donorContent}>
-                <Icon name="description" size={40} color="#059669" />
-                <Text style={styles.donorText}>
-                  A donor-ready document incorporating the 6-month objectives,
-                  performance scores, and assessment indexes is ready.
+              <View style={styles.cohortBadgeMain}>
+                <Text style={styles.cohortBadgeMainText}>
+                  {fellow.cohort?.toUpperCase() || "FELLOW"}
                 </Text>
-                <TouchableOpacity
-                  style={styles.downloadButton}
-                  onPress={() =>
-                    Alert.alert(
-                      "Download",
-                      "Downloading presentation package...",
-                    )
-                  }
-                >
-                  <Icon name="file-download" size={18} color="#FFFFFF" />
-                  <Text style={styles.downloadButtonText}>
-                    Download presentation package →
+              </View>
+
+              <View style={styles.profileDetails}>
+                <View style={styles.profileDetailItem}>
+                  <Icon name="location-on" size={16} color="#FFFFFF" />
+                  <Text style={styles.profileDetailText}>
+                    {fellow.location}
+                  </Text>
+                </View>
+                <View style={styles.profileDetailItem}>
+                  <Icon name="work" size={16} color="#FFFFFF" />
+                  <Text style={styles.profileDetailText}>
+                    {fellow.school || "Not Assigned"}
+                  </Text>
+                </View>
+                <View style={styles.profileDetailItem}>
+                  <Icon name="email" size={16} color="#FFFFFF" />
+                  <Text style={styles.profileDetailText}>{fellow.email}</Text>
+                </View>
+                <View style={styles.profileDetailItem}>
+                  <Icon name="phone" size={16} color="#FFFFFF" />
+                  <Text style={styles.profileDetailText}>{fellow.phone}</Text>
+                </View>
+                <View style={styles.profileDetailItem}>
+                  <Icon name="calendar-today" size={16} color="#FFFFFF" />
+                  <Text style={styles.profileDetailText}>
+                    Joined: {fellow.joinDate}
+                  </Text>
+                </View>
+                <View style={styles.profileDetailItem}>
+                  <Icon name="info" size={16} color="#FFFFFF" />
+                  <Text style={styles.profileDetailText}>
+                    Status: {fellow.status}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            {/* Goals Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Goals</Text>
+              <View style={styles.sectionActions}>
+                <TouchableOpacity style={styles.sectionActionButton}>
+                  <Icon name="dashboard" size={18} color="#059669" />
+                  <Text style={styles.sectionActionText}>
+                    Performance Dashboard
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sectionActionButton}>
+                  <Icon name="assessment" size={18} color="#059669" />
+                  <Text style={styles.sectionActionText}>
+                    6-Month Progress Reviews
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
 
-          {/* Completed Section */}
-          <View style={styles.completedSection}>
-            <LinearGradient
-              colors={["#d1fae5", "#a7f3d0"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.completedCard}
-            >
-              <Icon name="check-circle" size={24} color="#059669" />
-              <Text style={styles.completedText}>COMPLETED</Text>
-              <Text style={styles.completedSubtext}>
-                All goals are on track
-              </Text>
-            </LinearGradient>
-          </View>
+            {/* Goal Cards */}
+            {fellow.goals &&
+              fellow.goals.map((goal) => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  isExpanded={expandedGoal === goal.id}
+                  onToggle={toggleGoal}
+                />
+              ))}
 
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+            {/* Placement Summary & Donor Report Row */}
+            <View style={styles.rowContainer}>
+              {/* Placement Summary Card */}
+              <View style={[styles.card, styles.placementCard]}>
+                <Text style={styles.cardTitle}>Placement Summary</Text>
+
+                <View style={styles.placementItem}>
+                  <View style={styles.placementIconContainer}>
+                    <Icon name="work" size={20} color="#059669" />
+                  </View>
+                  <View>
+                    <Text style={styles.placementLabel}>Active Placement</Text>
+                    <Text style={styles.placementValue}>
+                      {fellow.school || "Not Assigned"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.placementItem}>
+                  <View style={styles.placementIconContainer}>
+                    <Icon name="class" size={20} color="#f59e0b" />
+                  </View>
+                  <View>
+                    <Text style={styles.placementLabel}>Class Grades</Text>
+                    <Text style={styles.placementValue}>Grade 3, Grade 4</Text>
+                  </View>
+                </View>
+
+                <View style={styles.placementItem}>
+                  <View style={styles.placementIconContainer}>
+                    <Icon name="people" size={20} color="#8b5cf6" />
+                  </View>
+                  <View>
+                    <Text style={styles.placementLabel}>Assigned Students</Text>
+                    <Text style={styles.placementValue}>76 Students</Text>
+                  </View>
+                </View>
+
+                <View style={styles.placementItem}>
+                  <View style={styles.placementIconContainer}>
+                    <Icon name="star" size={20} color="#fbbf24" />
+                  </View>
+                  <View>
+                    <Text style={styles.placementLabel}>Evaluation Rating</Text>
+                    <Text style={styles.placementValue}>4.8 / 5.0</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Donor Report Card */}
+              <View style={[styles.card, styles.donorCard]}>
+                <Text style={styles.cardTitle}>Donor Report Status</Text>
+
+                <View style={styles.donorContent}>
+                  <Icon name="description" size={40} color="#059669" />
+                  <Text style={styles.donorText}>
+                    A donor-ready document incorporating the 6-month objectives,
+                    performance scores, and assessment indexes is ready.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.downloadButton}
+                    onPress={() =>
+                      Alert.alert(
+                        "Download",
+                        "Downloading presentation package...",
+                      )
+                    }
+                  >
+                    <Icon name="file-download" size={18} color="#FFFFFF" />
+                    <Text style={styles.downloadButtonText}>
+                      Download presentation package →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Completed Section */}
+            <View style={styles.completedSection}>
+              <LinearGradient
+                colors={["#d1fae5", "#a7f3d0"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.completedCard}
+              >
+                <Icon name="check-circle" size={24} color="#059669" />
+                <Text style={styles.completedText}>COMPLETED</Text>
+                <Text style={styles.completedSubtext}>
+                  All goals are on track
+                </Text>
+              </LinearGradient>
+            </View>
+
+            {/* Footer */}
+            {showFooter && <Footer />}
+
+            <View style={styles.bottomSpacer} />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </RouteGuard>
   );
 };
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading Styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#64748b",
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#059669",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
   // Sidebar styles
   sidebar: {
     position: "absolute",
@@ -771,8 +1070,7 @@ const styles = StyleSheet.create({
   brandIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#047857",
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -1240,6 +1538,107 @@ const styles = StyleSheet.create({
   completedSubtext: {
     fontSize: 12,
     color: "#065f46",
+  },
+  // Footer styles
+  footer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    marginTop: 40,
+    marginBottom: 20,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#EDEEEF",
+    marginHorizontal: 16,
+  },
+  footerContent: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    gap: 20,
+  },
+  footerSection: {
+    flex: 1,
+    minWidth: 200,
+  },
+  footerLogoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  footerLogoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  footerFoundationName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#065f46",
+  },
+  footerTagline: {
+    fontSize: 12,
+    color: "#6B7280",
+    lineHeight: 16,
+  },
+  footerSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#191C1D",
+    marginBottom: 12,
+  },
+  footerContactItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 10,
+  },
+  footerContactText: {
+    fontSize: 13,
+    color: "#6B7280",
+    flex: 1,
+  },
+  footerAddressText: {
+    fontSize: 13,
+    color: "#6B7280",
+    flex: 1,
+    lineHeight: 18,
+  },
+  footerBottom: {
+    borderTopWidth: 1,
+    borderTopColor: "#EDEEEF",
+    paddingTop: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  footerCopyright: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  footerLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  footerLinkText: {
+    fontSize: 12,
+    color: "#006857",
+    fontWeight: "500",
+  },
+  footerDot: {
+    fontSize: 12,
+    color: "#9CA3AF",
   },
   bottomSpacer: {
     height: 32,

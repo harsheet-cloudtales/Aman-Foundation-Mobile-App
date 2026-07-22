@@ -1,9 +1,13 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -21,7 +25,31 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// Theme Colors
+// ============================================
+// TYPES
+// ============================================
+interface School {
+  id: number;
+  name: string;
+  district: string;
+  enrolled: number;
+  programs: number;
+  impact: number;
+  status: string;
+  image?: string;
+}
+
+interface DashboardStats {
+  totalSchools: number;
+  totalStudents: number;
+  impactScore: number;
+  attendanceRate: number;
+  resourceRate: number;
+}
+
+// ============================================
+// THEME COLORS
+// ============================================
 const colors = {
   primary: "#006857",
   primaryContainer: "#00846e",
@@ -45,44 +73,9 @@ const colors = {
   emerald: "#10b981",
 };
 
-// Schools Data
-const schoolsData = [
-  {
-    id: 1,
-    name: "Oakridge Academy",
-    district: "North District",
-    enrolled: 1240,
-    programs: 4,
-    impact: 85,
-    status: "Active",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAd0x1ztc9iuj8nay2xC1_MH-xTSmAKr8IhFrASNZRkSKkt-Y4BunC5I9iqvTLQ0_8lmU0zaYnPjqddtwFcC75fjZRBUU-N_7DG60EY9HluYt_nZMGUi1MCuGMs9ZtR2iM2AGFyw2MvZhg-RlW1as3xPOOXef7qU9OwfisCQeoCv_6chJeBZbBMdmknEG_LLtMl_EWluwSEWTOAEkWm2p31lCjaolK7bQHfqtZzT6CLsbLoare9Nu918oPHFj07H0LgIShvW4giB6YL",
-  },
-  {
-    id: 2,
-    name: "Riverside Public",
-    district: "East Valley",
-    enrolled: 850,
-    programs: 2,
-    impact: 42,
-    status: "Review",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCz5AwPFuwFIR2gamqHGmS3Z3IdTDQwW83VVeH6b9NJQeyhwstun166F-NBJdmvRxVedIL-KvP2kSfrxII7pBp79OmeBVj_J6PnuiUawZodfc0uJXAvWrakkcwnw4Hqf3XMp1L_FWf3gbWbnqajq_B2L9R61bXpsmng6PGHQ1DhYHPRtNj0FIVW9oXuywykoMFb8kYgru_HD_DkySGwo1b-jcWzvibQ5MZ6R3bzcPgSiBKeu0Rk1ETZRc61Hdu6z3xj1KNhL2dgFdP5",
-  },
-  {
-    id: 3,
-    name: "Summit Prep",
-    district: "West Highlands",
-    enrolled: 2100,
-    programs: 7,
-    impact: 94,
-    status: "Active",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuB3JsQ8gLDGjXcAskdAgUZD_gbTWPDpCHJ32DnFoopdp-_p5I_tgEYtvw4dOCafH7MyasL1dS3wak_92AIaWlwMwG3sj4MjB1WuLlaXIrD_Pgmeuj-7QDOpOBBGV61QzLmn-ToK-R2LhxD-uDv5RiRqzcVeF6dzd8NDuP0UxUs4_6vkZrksOHYi1xW4AxQWl2kD1120kSJ72va_hR5sAs4V-2ir50bTZl6Oc9Rb9HATjyWanXkUOJDd6GDhhJaAsICMPa-8RFXRUFJx",
-  },
-];
-
-// Footer Component
+// ============================================
+// FOOTER COMPONENT
+// ============================================
 const Footer = () => {
   return (
     <View style={styles.footer}>
@@ -145,8 +138,16 @@ const Footer = () => {
   );
 };
 
-// School Card Component
-const SchoolCard = ({ school, onPress }) => (
+// ============================================
+// SCHOOL CARD COMPONENT
+// ============================================
+const SchoolCard = ({
+  school,
+  onPress,
+}: {
+  school: School;
+  onPress: () => void;
+}) => (
   <TouchableOpacity
     style={styles.schoolCard}
     onPress={onPress}
@@ -154,7 +155,12 @@ const SchoolCard = ({ school, onPress }) => (
   >
     <View style={styles.cardHeader}>
       <View style={styles.schoolInfo}>
-        <Image source={{ uri: school.image }} style={styles.schoolImage} />
+        <Image
+          source={{
+            uri: school.image || "https://picsum.photos/seed/1/100/100",
+          }}
+          style={styles.schoolImage}
+        />
         <View>
           <Text style={styles.schoolName}>{school.name}</Text>
           <View style={styles.locationContainer}>
@@ -209,12 +215,26 @@ const SchoolCard = ({ school, onPress }) => (
   </TouchableOpacity>
 );
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function SchoolsModule() {
+  const { user } = useAuth();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showFooter, setShowFooter] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [schools, setSchools] = useState<School[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalSchools: 0,
+    totalStudents: 0,
+    impactScore: 0,
+    attendanceRate: 0,
+    resourceRate: 0,
+  });
+
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
@@ -224,6 +244,96 @@ export default function SchoolsModule() {
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
+  // ============================================
+  // FETCH SCHOOLS DATA
+  // ============================================
+  const fetchSchools = async () => {
+    try {
+      setLoading(true);
+
+      const data = await api.get<School[]>("/api/schools");
+
+      if (data && data.length > 0) {
+        setSchools(data);
+
+        // Calculate stats
+        const totalStudents = data.reduce(
+          (acc, s) => acc + (s.enrolled || 0),
+          0,
+        );
+        const avgImpact = Math.round(
+          data.reduce((acc, s) => acc + (s.impact || 0), 0) / data.length,
+        );
+
+        setStats({
+          totalSchools: data.length,
+          totalStudents: totalStudents,
+          impactScore: avgImpact,
+          attendanceRate: 92,
+          resourceRate: 78,
+        });
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Schools fetch error:", err.message);
+      }
+      // Fallback data
+      const fallbackSchools: School[] = [
+        {
+          id: 1,
+          name: "Oakridge Academy",
+          district: "North District",
+          enrolled: 1240,
+          programs: 4,
+          impact: 85,
+          status: "Active",
+          image: "https://picsum.photos/seed/1/100/100",
+        },
+        {
+          id: 2,
+          name: "Riverside Public",
+          district: "East Valley",
+          enrolled: 850,
+          programs: 2,
+          impact: 42,
+          status: "Review",
+          image: "https://picsum.photos/seed/2/100/100",
+        },
+        {
+          id: 3,
+          name: "Summit Prep",
+          district: "West Highlands",
+          enrolled: 2100,
+          programs: 7,
+          impact: 94,
+          status: "Active",
+          image: "https://picsum.photos/seed/3/100/100",
+        },
+      ];
+      setSchools(fallbackSchools);
+      setStats({
+        totalSchools: fallbackSchools.length,
+        totalStudents: fallbackSchools.reduce((acc, s) => acc + s.enrolled, 0),
+        impactScore: Math.round(
+          fallbackSchools.reduce((acc, s) => acc + s.impact, 0) /
+            fallbackSchools.length,
+        ),
+        attendanceRate: 92,
+        resourceRate: 78,
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSchools();
+  }, []);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -238,6 +348,16 @@ export default function SchoolsModule() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -272,11 +392,10 @@ export default function SchoolsModule() {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
-  // Logout function
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -308,7 +427,7 @@ export default function SchoolsModule() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    fetchSchools();
   };
 
   const handleScroll = (event: any) => {
@@ -316,506 +435,595 @@ export default function SchoolsModule() {
     setShowFooter(offsetY > 450);
   };
 
-  const filteredSchools = schoolsData.filter(
+  const filteredSchools = schools.filter(
     (school) =>
       school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       school.district.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading schools...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // RENDER
+  // ============================================
   return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        <View style={styles.brandContainer}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            style={styles.brandIcon}
-          >
-            <MaterialIcons name="local-library" size={22} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
           <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
 
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="happy-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Students</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#047857" />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
-                  Schools
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>PTA & Programs</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryContainer]}
+                style={styles.brandIcon}
+              >
+                <MaterialIcons name="local-library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
 
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={18}
-                  color={colors.rose}
-                />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={toggleMenu}>
-            <MaterialIcons name="menu" size={24} color="#64748b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Impact Portal</Text>
-          <View style={styles.headerIcons}>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
+            >
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
+
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
+                  >
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons name="happy-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Students</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemActive]}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#047857"
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextActive]}
+                    >
+                      Schools
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PTA & Programs</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
             >
               <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#1f2937"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
-            >
-              <Ionicons name="settings-outline" size={22} color="#1f2937" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/profile")}>
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20, gap: 24 }}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/education_management_hub")}
-          >
-            <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
-            <Text style={styles.backText}>Back to Education Hub</Text>
-          </TouchableOpacity>
-
-          {/* Header Section */}
-          <View>
-            <Text style={styles.mainTitle}>Schools Module</Text>
-            <Text style={styles.subtitle}>
-              Monitoring school profiles, program participation, and geographic
-              impact across targeted regions.
-            </Text>
-          </View>
-
-          {/* Search and Export */}
-          <View style={styles.actionContainer}>
-            <View style={styles.searchContainer}>
-              <MaterialIcons
-                name="search"
+                name="document-text-outline"
                 size={20}
-                color={colors.onSurfaceVariant}
+                color="#4b5563"
               />
-              <TextInput
-                placeholder="Search schools..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                style={styles.searchInput}
-                placeholderTextColor="#9ca3af"
-              />
+              <Text style={styles.menuText}>Admin & Access</Text>
+            </TouchableOpacity>
+
+            {/* AUTHENTICATION SECTION */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
             </View>
-            <TouchableOpacity style={styles.exportButton}>
-              <Feather name="download" size={16} color="#fff" />
-              <Text style={styles.exportButtonText}>Export</Text>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.addButton}>
-              <MaterialIcons name="add" size={18} color="white" />
-              <Text style={styles.addButtonText}>Add School</Text>
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={colors.rose}
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={toggleMenu}>
+              <MaterialIcons name="menu" size={24} color="#64748b" />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Impact Portal</Text>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#1f2937"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#1f2937" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile")}>
+                {/* <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatar}
+                /> */}
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Map & Stats Section */}
-          <View style={styles.mapContainer}>
-            <View style={styles.mapCard}>
-              <Image
-                source={{ uri: "https://picsum.photos/800/400?grayscale" }}
-                style={styles.mapImage}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 20, gap: 24 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
               />
-              <BlurView intensity={80} tint="light" style={styles.mapOverlay}>
-                <View style={styles.mapOverlayHeader}>
-                  <Text style={styles.mapOverlayTitle}>Regional Impact</Text>
-                  <MaterialIcons
-                    name="public"
-                    size={20}
-                    color={colors.primary}
-                  />
-                </View>
-                <View style={styles.mapStats}>
-                  <View>
-                    <Text style={styles.mapStatLabel}>Total Schools</Text>
-                    <Text style={styles.mapStatValue}>124</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.mapStatLabel}>Active Students</Text>
-                    <Text
-                      style={[styles.mapStatValue, { color: colors.primary }]}
-                    >
-                      45.2k
-                    </Text>
-                  </View>
-                </View>
-              </BlurView>
+            }
+          >
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.push("/education_management_hub")}
+            >
+              <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
+              <Text style={styles.backText}>Back to Education Hub</Text>
+            </TouchableOpacity>
+
+            {/* Header Section */}
+            <View>
+              <Text style={styles.mainTitle}>Schools Module</Text>
+              <Text style={styles.subtitle}>
+                Monitoring school profiles, program participation, and
+                geographic impact across targeted regions.
+              </Text>
             </View>
 
-            <View style={styles.rightStats}>
-              <LinearGradient
-                colors={[colors.primaryContainer, colors.primaryContainer]}
-                style={styles.impactCard}
-              >
-                <View style={styles.impactHeader}>
-                  <MaterialIcons
-                    name="trending-up"
-                    size={20}
-                    color={colors.onPrimaryContainer}
-                  />
-                  <Text style={styles.impactLabel}>Overall Impact Score</Text>
-                </View>
-                <View style={styles.impactScore}>
-                  <Text style={styles.impactValue}>87</Text>
-                  <Text style={styles.impactTotal}>/ 100</Text>
-                </View>
-                <View style={styles.impactDetails}>
-                  <View>
-                    <View style={styles.impactRow}>
-                      <Text style={styles.impactText}>Program Attendance</Text>
-                      <Text style={styles.impactPercent}>92%</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[styles.progressFillSmall, { width: "92%" }]}
-                      />
-                    </View>
-                  </View>
-                  <View>
-                    <View style={styles.impactRow}>
-                      <Text style={styles.impactText}>Resource Allocation</Text>
-                      <Text style={styles.impactPercent}>78%</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[styles.progressFillSmall, { width: "78%" }]}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </LinearGradient>
+            {/* Search and Export */}
+            <View style={styles.actionContainer}>
+              <View style={styles.searchContainer}>
+                <MaterialIcons
+                  name="search"
+                  size={20}
+                  color={colors.onSurfaceVariant}
+                />
+                <TextInput
+                  placeholder="Search schools..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  style={styles.searchInput}
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+              <TouchableOpacity style={styles.exportButton}>
+                <Feather name="download" size={16} color="#fff" />
+                <Text style={styles.exportButtonText}>Export</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addButton}>
+                <MaterialIcons name="add" size={18} color="white" />
+                <Text style={styles.addButtonText}>Add School</Text>
+              </TouchableOpacity>
+            </View>
 
-              <View style={styles.alertCard}>
-                <Text style={styles.alertLabel}>Needs Attention</Text>
-                <View style={styles.alertContent}>
-                  <View style={styles.alertIcon}>
+            {/* Map & Stats Section */}
+            <View style={styles.mapContainer}>
+              <View style={styles.mapCard}>
+                <Image
+                  source={{ uri: "https://picsum.photos/800/400" }}
+                  style={styles.mapImage}
+                />
+                <BlurView intensity={80} tint="light" style={styles.mapOverlay}>
+                  <View style={styles.mapOverlayHeader}>
+                    <Text style={styles.mapOverlayTitle}>Regional Impact</Text>
                     <MaterialIcons
-                      name="warning"
+                      name="public"
                       size={20}
-                      color={colors.secondary}
+                      color={colors.primary}
                     />
                   </View>
-                  <View>
-                    <Text style={styles.alertText}>
-                      3 Schools require immediate resource restocking.
-                    </Text>
-                    <TouchableOpacity>
-                      <Text style={styles.alertLink}>Review Inventory</Text>
-                    </TouchableOpacity>
+                  <View style={styles.mapStats}>
+                    <View>
+                      <Text style={styles.mapStatLabel}>Total Schools</Text>
+                      <Text style={styles.mapStatValue}>
+                        {stats.totalSchools}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.mapStatLabel}>Active Students</Text>
+                      <Text
+                        style={[styles.mapStatValue, { color: colors.primary }]}
+                      >
+                        {stats.totalStudents.toLocaleString()}
+                      </Text>
+                    </View>
+                  </View>
+                </BlurView>
+              </View>
+
+              <View style={styles.rightStats}>
+                <LinearGradient
+                  colors={[colors.primaryContainer, colors.primaryContainer]}
+                  style={styles.impactCard}
+                >
+                  <View style={styles.impactHeader}>
+                    <MaterialIcons
+                      name="trending-up"
+                      size={20}
+                      color={colors.onPrimaryContainer}
+                    />
+                    <Text style={styles.impactLabel}>Overall Impact Score</Text>
+                  </View>
+                  <View style={styles.impactScore}>
+                    <Text style={styles.impactValue}>{stats.impactScore}</Text>
+                    <Text style={styles.impactTotal}>/ 100</Text>
+                  </View>
+                  <View style={styles.impactDetails}>
+                    <View>
+                      <View style={styles.impactRow}>
+                        <Text style={styles.impactText}>
+                          Program Attendance
+                        </Text>
+                        <Text style={styles.impactPercent}>
+                          {stats.attendanceRate}%
+                        </Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFillSmall,
+                            { width: `${stats.attendanceRate}%` },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                    <View>
+                      <View style={styles.impactRow}>
+                        <Text style={styles.impactText}>
+                          Resource Allocation
+                        </Text>
+                        <Text style={styles.impactPercent}>
+                          {stats.resourceRate}%
+                        </Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFillSmall,
+                            { width: `${stats.resourceRate}%` },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+
+                <View style={styles.alertCard}>
+                  <Text style={styles.alertLabel}>Needs Attention</Text>
+                  <View style={styles.alertContent}>
+                    <View style={styles.alertIcon}>
+                      <MaterialIcons
+                        name="warning"
+                        size={20}
+                        color={colors.secondary}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.alertText}>
+                        {schools.filter((s) => s.status === "Review").length}{" "}
+                        Schools require immediate resource restocking.
+                      </Text>
+                      <TouchableOpacity>
+                        <Text style={styles.alertLink}>Review Inventory</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
             </View>
-          </View>
 
-          {/* Featured Profiles Section */}
-          <View>
-            <View style={styles.featuredHeader}>
-              <Text style={styles.featuredTitle}>Featured Profiles</Text>
-              <TouchableOpacity style={styles.viewAllButton}>
-                <Text style={styles.viewAllText}>View All Directory</Text>
-                <MaterialIcons
-                  name="arrow-forward"
-                  size={14}
-                  color={colors.primary}
-                />
-              </TouchableOpacity>
-            </View>
+            {/* Featured Profiles Section */}
             <View>
-              {filteredSchools.map((school) => (
-                <SchoolCard
-                  key={school.id}
-                  school={school}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/education_schools_profile",
-                      params: {
-                        id: school.id.toString(),
-                        name: school.name,
-                        district: school.district,
-                        enrolled: school.enrolled.toString(),
-                        programs: school.programs.toString(),
-                        impact: school.impact.toString(),
-                        status: school.status,
-                        image: school.image,
-                      },
-                    });
-                  }}
-                />
-              ))}
+              <View style={styles.featuredHeader}>
+                <Text style={styles.featuredTitle}>Featured Profiles</Text>
+                <TouchableOpacity style={styles.viewAllButton}>
+                  <Text style={styles.viewAllText}>View All Directory</Text>
+                  <MaterialIcons
+                    name="arrow-forward"
+                    size={14}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+              <View>
+                {filteredSchools.map((school) => (
+                  <SchoolCard
+                    key={school.id}
+                    school={school}
+                    onPress={() => {
+                      router.push({
+                        pathname: "/education_schools_profile",
+                        params: {
+                          id: school.id.toString(),
+                          name: school.name,
+                          district: school.district,
+                          enrolled: school.enrolled.toString(),
+                          programs: school.programs.toString(),
+                          impact: school.impact.toString(),
+                          status: school.status,
+                          image: school.image,
+                        },
+                      });
+                    }}
+                  />
+                ))}
+              </View>
             </View>
-          </View>
 
-          {/* Footer */}
-          {showFooter && <Footer />}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+            {/* Footer */}
+            {showFooter && <Footer />}
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </RouteGuard>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
   /* ========================================
      SIDEBAR & NAVIGATION
   ======================================== */

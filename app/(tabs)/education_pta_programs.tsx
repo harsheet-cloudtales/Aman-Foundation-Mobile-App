@@ -1,13 +1,16 @@
+import { RouteGuard } from "@/components/RouteGuard";
+import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
-  Image,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -22,7 +25,30 @@ import {
 
 const { width } = Dimensions.get("window");
 
-// Theme Colors
+// ============================================
+// TYPES
+// ============================================
+interface Program {
+  id: number;
+  title: string;
+  status: string;
+  description: string;
+  duration: string;
+  participants: string;
+}
+
+interface Event {
+  id: number;
+  title: string;
+  status: string;
+  description: string;
+  date: string;
+  location: string;
+}
+
+// ============================================
+// THEME COLORS
+// ============================================
 const colors = {
   primary: "#006857",
   primaryContainer: "#00846e",
@@ -48,75 +74,19 @@ const colors = {
   emerald: "#10b981",
 };
 
-// Initial Data
-const initialPrograms = [
-  {
-    id: 1,
-    title: "Annual Literacy Drive",
-    status: "Active",
-    description:
-      "Comprehensive reading initiative targeting Standard 3 students.",
-    duration: "6 Months",
-    participants: "450 Students Enrolled",
-  },
-  {
-    id: 2,
-    title: "Digital Literacy Course",
-    status: "Planning",
-    description:
-      "Basic computing classes for standard 8 students in partner schools.",
-    duration: "3 Months",
-    participants: "Planning (120 Expected)",
-  },
-];
-
-const initialEvents = [
-  {
-    id: 101,
-    title: "Q3 PTA General Assembly",
-    status: "Completed",
-    description:
-      "Review of student outcomes, infrastructure needs, and parent feedback.",
-    date: "Oct 24, 2026 • 10:00 AM",
-    location: "Oakridge Main Hall",
-  },
-  {
-    id: 102,
-    title: "Fellow-Parent Welcome Committee",
-    status: "Scheduled",
-    description:
-      "Orientation session welcoming Cohort '24 fellows to the district.",
-    date: "Nov 12, 2026 • 11:30 AM",
-    location: "Riverside Classroom B",
-  },
-  {
-    id: 103,
-    title: "PTA Monthly Planning Meeting",
-    status: "Scheduled",
-    description:
-      "Discussing summer camp preparations and baseline literacy goals.",
-    date: "Jun 10, 2026 • 09:30 AM",
-    location: "Kalgachia Circle Office",
-  },
-  {
-    id: 104,
-    title: "Community Reading Circle Launch",
-    status: "Scheduled",
-    description:
-      "Launching the outdoor reading circle initiative for primary students.",
-    date: "Jun 24, 2026 • 02:00 PM",
-    location: "Bartari Village Common",
-  },
-];
-
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function PtaPrograms() {
+  const { user } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalType, setModalType] = useState("Program");
   const [refreshing, setRefreshing] = useState(false);
-  const [programs, setPrograms] = useState(initialPrograms);
-  const [events, setEvents] = useState(initialEvents);
+  const [loading, setLoading] = useState(true);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
@@ -159,6 +129,100 @@ export default function PtaPrograms() {
     "December",
   ];
 
+  // ============================================
+  // FETCH DATA
+  // ============================================
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch programs
+      const programsData = await api.get<Program[]>("/api/programs");
+      if (programsData) {
+        setPrograms(programsData);
+      }
+
+      // Fetch events
+      const eventsData = await api.get<Event[]>("/api/events");
+      if (eventsData) {
+        setEvents(eventsData);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.error("Fetch error:", err.message);
+      }
+      // Fallback data
+      setPrograms([
+        {
+          id: 1,
+          title: "Annual Literacy Drive",
+          status: "Active",
+          description:
+            "Comprehensive reading initiative targeting Standard 3 students.",
+          duration: "6 Months",
+          participants: "450 Students Enrolled",
+        },
+        {
+          id: 2,
+          title: "Digital Literacy Course",
+          status: "Planning",
+          description:
+            "Basic computing classes for standard 8 students in partner schools.",
+          duration: "3 Months",
+          participants: "Planning (120 Expected)",
+        },
+      ]);
+      setEvents([
+        {
+          id: 101,
+          title: "Q3 PTA General Assembly",
+          status: "Completed",
+          description:
+            "Review of student outcomes, infrastructure needs, and parent feedback.",
+          date: "Oct 24, 2026 • 10:00 AM",
+          location: "Oakridge Main Hall",
+        },
+        {
+          id: 102,
+          title: "Fellow-Parent Welcome Committee",
+          status: "Scheduled",
+          description:
+            "Orientation session welcoming Cohort '24 fellows to the district.",
+          date: "Nov 12, 2026 • 11:30 AM",
+          location: "Riverside Classroom B",
+        },
+        {
+          id: 103,
+          title: "PTA Monthly Planning Meeting",
+          status: "Scheduled",
+          description:
+            "Discussing summer camp preparations and baseline literacy goals.",
+          date: "Jun 10, 2026 • 09:30 AM",
+          location: "Kalgachia Circle Office",
+        },
+        {
+          id: 104,
+          title: "Community Reading Circle Launch",
+          status: "Scheduled",
+          description:
+            "Launching the outdoor reading circle initiative for primary students.",
+          date: "Jun 24, 2026 • 02:00 PM",
+          location: "Bartari Village Common",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ============================================
+  // SIDEBAR FUNCTIONS
+  // ============================================
   const toggleMenu = () => {
     if (menuOpen) {
       Animated.timing(slideAnim, {
@@ -173,6 +237,16 @@ export default function PtaPrograms() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+    }
+  };
+
+  const closeMenu = () => {
+    if (menuOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setMenuOpen(false));
     }
   };
 
@@ -207,11 +281,10 @@ export default function PtaPrograms() {
   };
 
   const handleNavigation = (route: string) => {
-    toggleMenu();
+    closeMenu();
     router.push(route);
   };
 
-  // Logout function
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -243,10 +316,12 @@ export default function PtaPrograms() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+    fetchData();
   };
 
-  // Calendar Functions
+  // ============================================
+  // CALENDAR FUNCTIONS
+  // ============================================
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -256,7 +331,6 @@ export default function PtaPrograms() {
 
   const calendarCells = [];
 
-  // Padding days from previous month
   for (let i = firstDayOfMonth - 1; i >= 0; i--) {
     calendarCells.push({
       day: daysInPrevMonth - i,
@@ -266,7 +340,6 @@ export default function PtaPrograms() {
     });
   }
 
-  // Current month days
   for (let i = 1; i <= daysInMonth; i++) {
     calendarCells.push({
       day: i,
@@ -276,7 +349,6 @@ export default function PtaPrograms() {
     });
   }
 
-  // Padding days from next month
   const totalCellsNeeded = calendarCells.length <= 35 ? 35 : 42;
   const nextMonthPaddingCount = totalCellsNeeded - calendarCells.length;
   for (let i = 1; i <= nextMonthPaddingCount; i++) {
@@ -357,35 +429,48 @@ export default function PtaPrograms() {
         return d.getMonth() === month && d.getFullYear() === year;
       });
 
-  const handleAddSubmit = () => {
+  // ============================================
+  // CRUD OPERATIONS
+  // ============================================
+  const handleAddSubmit = async () => {
     if (!newName || !newDesc) {
       Alert.alert("Error", "Please fill all required fields");
       return;
     }
 
-    if (modalType === "Program") {
-      const newProg = {
-        id: programs.length + 1,
-        title: newName,
-        status: newPriority,
-        description: newDesc,
-        duration: newDate || "Indefinite",
-        participants: newLoc || "0 Enrolled",
-      };
-      setPrograms([...programs, newProg]);
-      Alert.alert("Success", "Program launched successfully");
-    } else {
-      const formattedDate = formatEventDate(tempEventDate, tempEventTime);
-      const newEvent = {
-        id: events.length + 101,
-        title: newName,
-        status: newPriority === "Active" ? "Scheduled" : "Completed",
-        description: newDesc,
-        date: formattedDate,
-        location: newLoc || "TBD",
-      };
-      setEvents([...events, newEvent]);
-      Alert.alert("Success", "Event scheduled successfully");
+    try {
+      if (modalType === "Program") {
+        const newProgram = {
+          title: newName,
+          description: newDesc,
+          duration: newDate || "Indefinite",
+          participants: newLoc || "0 Enrolled",
+          status: newPriority,
+        };
+        const response = await api.post("/api/programs", newProgram);
+        if (response) {
+          Alert.alert("Success", "Program launched successfully");
+          fetchData();
+        }
+      } else {
+        const formattedDate = formatEventDate(tempEventDate, tempEventTime);
+        const newEvent = {
+          title: newName,
+          description: newDesc,
+          date: formattedDate,
+          location: newLoc || "TBD",
+          status: newPriority === "Active" ? "Scheduled" : "Completed",
+        };
+        const response = await api.post("/api/events", newEvent);
+        if (response) {
+          Alert.alert("Success", "Event scheduled successfully");
+          fetchData();
+        }
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        Alert.alert("Error", err.message);
+      }
     }
 
     // Reset form
@@ -399,6 +484,9 @@ export default function PtaPrograms() {
     setShowAddModal(false);
   };
 
+  // ============================================
+  // COMPONENTS
+  // ============================================
   const StatCard = ({ title, value, subtitle }: any) => (
     <View style={styles.statCard}>
       <Text style={styles.statTitle}>{title}</Text>
@@ -407,7 +495,7 @@ export default function PtaPrograms() {
     </View>
   );
 
-  const ProgramCard = ({ program }: any) => (
+  const ProgramCard = ({ program }: { program: Program }) => (
     <TouchableOpacity
       style={styles.programCard}
       onPress={() => {
@@ -440,7 +528,7 @@ export default function PtaPrograms() {
     </TouchableOpacity>
   );
 
-  const EventCard = ({ event }: any) => (
+  const EventCard = ({ event }: { event: Event }) => (
     <TouchableOpacity
       style={styles.eventCard}
       onPress={() => {
@@ -471,669 +559,750 @@ export default function PtaPrograms() {
     </TouchableOpacity>
   );
 
-  return (
-    <View style={{ flex: 1 }}>
-      {/* OVERLAY */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleMenu}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <Animated.View
-        style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
-      >
-        <View style={styles.brandContainer}>
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            style={styles.brandIcon}
-          >
-            <MaterialIcons name="local-library" size={22} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={styles.brandTitle}>Aman Foundation</Text>
-            <Text style={styles.brandSub}>Impact Portal</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/")}
-        >
-          <Ionicons name="grid-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Dashboard</Text>
-        </TouchableOpacity>
-
-        {/* EDUCATION WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleEducationDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="school-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Education</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateEducation }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {educationDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_management_hub")}
-              >
-                <Ionicons name="library-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_schools_module")}
-              >
-                <Ionicons name="business-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Schools Overview</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_fellows_module")}
-              >
-                <Ionicons name="people-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Fellows Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/education_students_module")}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Students Directory</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemActive]}
-                onPress={() => handleNavigation("/education_pta_programs")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#047857"
-                />
-                <Text style={[styles.dropdownText, styles.dropdownTextActive]}>
-                  PTA & Programs
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* LIVELIHOOD WITH DROPDOWN */}
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleLivelihoodDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Livelihood</Text>
-            </View>
-            <Animated.View
-              style={{ transform: [{ rotate: rotateLivelihood }] }}
-            >
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {livelihoodDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_management_hub")}
-              >
-                <Ionicons name="apps-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Management Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/livelihood_goat_rearing_1")}
-              >
-                <Ionicons name="paw-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Goat Rearing</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() =>
-                  handleNavigation("/livelihood_sugarcane_cultivation")
-                }
-              >
-                <Ionicons name="leaf-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Agriculture Support</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleNavigation("/beneficiary_master_profile")}
-              >
-                <Ionicons
-                  name="people-circle-outline"
-                  size={18}
-                  color="#6b7280"
-                />
-                <Text style={styles.dropdownText}>Beneficiaries</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/disaster_relief_management")}
-        >
-          <Ionicons name="snow-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Disaster Relief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/hr_employee_management")}
-        >
-          <Ionicons name="people-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>HR Management</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => handleNavigation("/admin_access_control")}
-        >
-          <Ionicons name="document-text-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>Admin & Access</Text>
-        </TouchableOpacity>
-
-        {/* AUTHENTICATION SECTION WITH DROPDOWN */}
-        <View style={styles.menuDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ACCOUNT</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            toggleMenu();
-            router.push("/profile");
-          }}
-        >
-          <Ionicons name="person-outline" size={20} color="#4b5563" />
-          <Text style={styles.menuText}>My Profile</Text>
-        </TouchableOpacity>
-
-        <View>
-          <TouchableOpacity
-            style={styles.menuItemWithDropdown}
-            onPress={toggleAuthDropdown}
-          >
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="key-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Authentication</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {authDropdownOpen && (
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/login");
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Login Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push("/register");
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#6b7280" />
-                <Text style={styles.dropdownText}>Register Page</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, styles.dropdownItemLogout]}
-                onPress={handleLogout}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={18}
-                  color={colors.rose}
-                />
-                <Text style={[styles.dropdownText, styles.dropdownTextLogout]}>
-                  Logout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* MAIN CONTENT */}
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-              <MaterialIcons name="menu" size={24} color="#4B5563" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Impact Portal</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Notifications", "No new notifications")
-              }
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color="#6B7280"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() =>
-                Alert.alert("Settings", "Settings will be available soon")
-              }
-            >
-              <Ionicons name="settings-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/profile")}>
-              <Image
-                source={{
-                  uri: "https://randomuser.me/api/portraits/women/68.jpg",
-                }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.push("/education_management_hub")}
-          >
-            <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
-            <Text style={styles.backText}>Back to Education Hub</Text>
-          </TouchableOpacity>
-
-          {/* Header Section */}
-          <View>
-            <Text style={styles.sectionLabel}>Education Module</Text>
-            <Text style={styles.mainTitle}>PTA & Programs Hub</Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={styles.scheduleButton}
-              onPress={() => {
-                setModalType("Event");
-                setShowAddModal(true);
-              }}
-            >
-              <MaterialIcons
-                name="calendar-month"
-                size={18}
-                color={colors.onSurface}
-              />
-              <Text style={styles.scheduleButtonText}>Schedule Meeting</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.launchButton}
-              onPress={() => {
-                setModalType("Program");
-                setShowAddModal(true);
-              }}
-            >
-              <MaterialIcons name="add" size={18} color={colors.onPrimary} />
-              <Text style={styles.launchButtonText}>Launch Program</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Statistics Cards */}
-          <View style={styles.statsContainer}>
-            <StatCard
-              title="Running Programs"
-              value={`${programs.length} Active`}
-              subtitle="Continuous impact assessment"
-            />
-            <StatCard
-              title="Meetings Held (YTD)"
-              value={`${events.filter((e) => e.status === "Completed").length + 24}`}
-              subtitle="Parent-Teacher linkages complete"
-            />
-            <StatCard
-              title="Communication Follow-ups"
-              value="4 Pending"
-              subtitle="Requires organizer action"
-            />
-          </View>
-
-          {/* Two Column Layout */}
-          <View style={styles.twoColumnLayout}>
-            {/* Left Column - Programs */}
-            <View style={styles.leftColumn}>
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                  <MaterialIcons
-                    name="workspace-premium"
-                    size={24}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.sectionTitle}>Long-Running Programs</Text>
-                </View>
-                {programs.map((program) => (
-                  <ProgramCard key={program.id} program={program} />
-                ))}
-              </View>
-            </View>
-
-            {/* Right Column - Calendar & Events */}
-            <View style={styles.rightColumn}>
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
-                  <MaterialIcons
-                    name="calendar-month"
-                    size={24}
-                    color={colors.secondary}
-                  />
-                  <Text style={styles.sectionTitle}>
-                    Events & Meetings Calendar
-                  </Text>
-                </View>
-
-                {/* Calendar Header */}
-                <View style={styles.calendarHeader}>
-                  <Text style={styles.calendarMonth}>
-                    {monthNames[month]} {year}
-                  </Text>
-                  <View style={styles.calendarNav}>
-                    <TouchableOpacity
-                      onPress={handlePrevMonth}
-                      style={styles.calendarNavButton}
-                    >
-                      <MaterialIcons
-                        name="chevron-left"
-                        size={20}
-                        color={colors.onSurface}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleNextMonth}
-                      style={styles.calendarNavButton}
-                    >
-                      <MaterialIcons
-                        name="chevron-right"
-                        size={20}
-                        color={colors.onSurface}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Weekday Labels */}
-                <View style={styles.weekdayContainer}>
-                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                    <Text key={day} style={styles.weekdayText}>
-                      {day}
-                    </Text>
-                  ))}
-                </View>
-
-                {/* Calendar Grid */}
-                <View style={styles.calendarGrid}>
-                  {calendarCells.map((cell, idx) => {
-                    const dayEvents = getEventsForDay(cell);
-                    const isToday =
-                      cell.day === 3 && cell.month === 5 && cell.year === 2026;
-                    const isSelected =
-                      selectedCell &&
-                      selectedCell.day === cell.day &&
-                      selectedCell.month === cell.month &&
-                      selectedCell.year === cell.year;
-
-                    return (
-                      <TouchableOpacity
-                        key={idx}
-                        style={[
-                          styles.calendarCell,
-                          !cell.isCurrentMonth && styles.calendarCellOtherMonth,
-                          isSelected && styles.calendarCellSelected,
-                          isToday && !isSelected && styles.calendarCellToday,
-                        ]}
-                        onPress={() => {
-                          if (isSelected) {
-                            setSelectedCell(null);
-                          } else {
-                            setSelectedCell(cell);
-                          }
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.calendarCellText,
-                            !cell.isCurrentMonth &&
-                              styles.calendarCellTextOther,
-                            isSelected && styles.calendarCellTextSelected,
-                          ]}
-                        >
-                          {cell.day}
-                        </Text>
-                        {dayEvents.length > 0 && (
-                          <View
-                            style={[
-                              styles.calendarDot,
-                              isSelected && styles.calendarDotSelected,
-                            ]}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* Events List */}
-                <View style={styles.eventsContainer}>
-                  <View style={styles.eventsHeader}>
-                    <Text style={styles.eventsTitle}>
-                      {selectedCell
-                        ? `Events on ${monthNames[selectedCell.month]} ${selectedCell.day}, ${selectedCell.year}`
-                        : `Events in ${monthNames[month]} ${year}`}
-                    </Text>
-                    {selectedCell && (
-                      <TouchableOpacity onPress={() => setSelectedCell(null)}>
-                        <Text style={styles.showAllText}>Show All Month</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {displayedEvents.map((event) => (
-                    <EventCard key={event.id} event={event} />
-                  ))}
-                  {displayedEvents.length === 0 && (
-                    <Text style={styles.noEventsText}>
-                      No events scheduled for this period.
-                    </Text>
-                  )}
-                </View>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
+  // ============================================
+  // LOADING STATE
+  // ============================================
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading PTA programs...</Text>
       </SafeAreaView>
+    );
+  }
 
-      {/* Add Modal */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Launch New {modalType}</Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <MaterialIcons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
+  // ============================================
+  // RENDER
+  // ============================================
+  return (
+    <RouteGuard>
+      <View style={{ flex: 1 }}>
+        {/* OVERLAY */}
+        {menuOpen && (
+          <TouchableOpacity
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+        )}
+
+        {/* SIDEBAR */}
+        <Animated.View
+          style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
+        >
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.brandContainer}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryContainer]}
+                style={styles.brandIcon}
+              >
+                <MaterialIcons name="local-library" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.brandTitle}>Aman Foundation</Text>
+                <Text style={styles.brandSub}>Impact Portal</Text>
+              </View>
             </View>
 
-            <ScrollView style={styles.modalForm}>
-              <View>
-                <Text style={styles.formLabel}>Title / Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder={`e.g. ${modalType === "Program" ? "Vocational Training Camp" : "PTA Special Assembly"}`}
-                  placeholderTextColor="#9ca3af"
-                  value={newName}
-                  onChangeText={setNewName}
-                />
-              </View>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/")}
+            >
+              <Ionicons name="grid-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Dashboard</Text>
+            </TouchableOpacity>
 
-              <View>
-                <Text style={styles.formLabel}>Description *</Text>
-                <TextInput
-                  style={[styles.formInput, styles.textArea]}
-                  placeholder="Explain goals, agendas, or outlines."
-                  placeholderTextColor="#9ca3af"
-                  value={newDesc}
-                  onChangeText={setNewDesc}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-              </View>
-
-              {modalType === "Program" ? (
-                <View>
-                  <Text style={styles.formLabel}>
-                    Planned Duration (e.g. 6 Months)
-                  </Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="e.g. 4 Months"
-                    placeholderTextColor="#9ca3af"
-                    value={newDate}
-                    onChangeText={setNewDate}
-                  />
+            {/* EDUCATION WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleEducationDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="school-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Education</Text>
                 </View>
-              ) : (
-                <View>
-                  <Text style={styles.formLabel}>Event Date & Time *</Text>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateEducation }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {educationDropdownOpen && (
+                <View style={styles.dropdownContainer}>
                   <TouchableOpacity
-                    style={styles.datePickerButton}
-                    onPress={() => setShowDatePicker(true)}
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_management_hub")
+                    }
                   >
-                    <MaterialIcons
-                      name="event"
-                      size={20}
-                      color={colors.primary}
+                    <Ionicons
+                      name="library-outline"
+                      size={18}
+                      color="#6b7280"
                     />
-                    <Text style={styles.datePickerText}>
-                      {tempEventDate.toDateString()} at{" "}
-                      {tempEventTime.toLocaleTimeString()}
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_schools_module")
+                    }
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Schools Overview</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_fellows_module")
+                    }
+                  >
+                    <Ionicons name="people-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Fellows Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/education_students_module")
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Students Directory</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemActive]}
+                    onPress={() => handleNavigation("/education_pta_programs")}
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#047857"
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextActive]}
+                    >
+                      PTA & Programs
                     </Text>
                   </TouchableOpacity>
                 </View>
               )}
+            </View>
 
-              <View>
-                <Text style={styles.formLabel}>
-                  {modalType === "Program"
-                    ? "Expected Participants (e.g. 150 Enrolled)"
-                    : "Location / Venue"}
-                </Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder={`e.g. ${modalType === "Program" ? "80 Enrolled" : "Classroom 4A"}`}
-                  placeholderTextColor="#9ca3af"
-                  value={newLoc}
-                  onChangeText={setNewLoc}
+            {/* LIVELIHOOD WITH DROPDOWN */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleLivelihoodDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="bicycle-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Livelihood</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateLivelihood }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {livelihoodDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_management_hub")
+                    }
+                  >
+                    <Ionicons name="apps-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Management Hub</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_goat_rearing_1")
+                    }
+                  >
+                    <Ionicons name="paw-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Goat Rearing</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/livelihood_sugarcane_cultivation")
+                    }
+                  >
+                    <Ionicons name="leaf-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Agriculture Support</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() =>
+                      handleNavigation("/beneficiary_master_profile")
+                    }
+                  >
+                    <Ionicons
+                      name="people-circle-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Beneficiaries</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/disaster_relief_management")}
+            >
+              <Ionicons name="snow-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>Disaster Relief</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/hr_employee_management")}
+            >
+              <Ionicons name="people-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>HR Management</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/admin_access_control")}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color="#4b5563"
+              />
+              <Text style={styles.menuText}>Admin & Access</Text>
+            </TouchableOpacity>
+
+            {/* AUTHENTICATION SECTION */}
+            <View style={styles.menuDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ACCOUNT</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                closeMenu();
+                router.push("/profile");
+              }}
+            >
+              <Ionicons name="person-outline" size={20} color="#4b5563" />
+              <Text style={styles.menuText}>My Profile</Text>
+            </TouchableOpacity>
+
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleAuthDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="key-outline" size={20} color="#4b5563" />
+                  <Text style={styles.menuText}>Authentication</Text>
+                </View>
+                <Animated.View style={{ transform: [{ rotate: rotateAuth }] }}>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {authDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/login");
+                    }}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#6b7280" />
+                    <Text style={styles.dropdownText}>Login Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      router.push("/registration");
+                    }}
+                  >
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>Register Page</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, styles.dropdownItemLogout]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={colors.rose}
+                    />
+                    <Text
+                      style={[styles.dropdownText, styles.dropdownTextLogout]}
+                    >
+                      Logout
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {/* MAIN CONTENT */}
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+                <MaterialIcons name="menu" size={24} color="#4B5563" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Impact Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Notifications", "No new notifications")
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color="#6B7280"
                 />
-              </View>
-
-              <View style={styles.formButtons}>
-                <TouchableOpacity
-                  onPress={() => setShowAddModal(false)}
-                  style={styles.cancelButton}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAddSubmit}
-                  style={styles.submitButton}
-                >
-                  <Text style={styles.submitButtonText}>Launch Now</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert("Settings", "Settings will be available soon")
+                }
+              >
+                <Ionicons name="settings-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/profile")}>
+                {/* <Image
+                  source={{
+                    uri:
+                      user?.avatar ||
+                      "https://randomuser.me/api/portraits/women/68.jpg",
+                  }}
+                  style={styles.avatar}
+                /> */}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
 
-      {/* Date/Time Pickers */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={tempEventDate}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) {
-              setTempEventDate(selectedDate);
-              setShowTimePicker(true);
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+              />
             }
-          }}
-        />
-      )}
-      {showTimePicker && (
-        <DateTimePicker
-          value={tempEventTime}
-          mode="time"
-          display="default"
-          onChange={(event, selectedTime) => {
-            setShowTimePicker(false);
-            if (selectedTime) {
-              setTempEventTime(selectedTime);
-            }
-          }}
-        />
-      )}
-    </View>
+          >
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.push("/education_management_hub")}
+            >
+              <MaterialIcons name="arrow-back" size={18} color="#6b7280" />
+              <Text style={styles.backText}>Back to Education Hub</Text>
+            </TouchableOpacity>
+
+            {/* Header Section */}
+            <View>
+              <Text style={styles.sectionLabel}>Education Module</Text>
+              <Text style={styles.mainTitle}>PTA & Programs Hub</Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.scheduleButton}
+                onPress={() => {
+                  setModalType("Event");
+                  setShowAddModal(true);
+                }}
+              >
+                <MaterialIcons
+                  name="calendar-month"
+                  size={18}
+                  color={colors.onSurface}
+                />
+                <Text style={styles.scheduleButtonText}>Schedule Meeting</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.launchButton}
+                onPress={() => {
+                  setModalType("Program");
+                  setShowAddModal(true);
+                }}
+              >
+                <MaterialIcons name="add" size={18} color={colors.onPrimary} />
+                <Text style={styles.launchButtonText}>Launch Program</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Statistics Cards */}
+            <View style={styles.statsContainer}>
+              <StatCard
+                title="Running Programs"
+                value={`${programs.length} Active`}
+                subtitle="Continuous impact assessment"
+              />
+              <StatCard
+                title="Meetings Held (YTD)"
+                value={`${events.filter((e) => e.status === "Completed").length + 24}`}
+                subtitle="Parent-Teacher linkages complete"
+              />
+              <StatCard
+                title="Communication Follow-ups"
+                value="4 Pending"
+                subtitle="Requires organizer action"
+              />
+            </View>
+
+            {/* Two Column Layout */}
+            <View style={styles.twoColumnLayout}>
+              {/* Left Column - Programs */}
+              <View style={styles.leftColumn}>
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <MaterialIcons
+                      name="workspace-premium"
+                      size={24}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.sectionTitle}>
+                      Long-Running Programs
+                    </Text>
+                  </View>
+                  {programs.map((program) => (
+                    <ProgramCard key={program.id} program={program} />
+                  ))}
+                </View>
+              </View>
+
+              {/* Right Column - Calendar & Events */}
+              <View style={styles.rightColumn}>
+                <View style={styles.sectionCard}>
+                  <View style={styles.sectionHeader}>
+                    <MaterialIcons
+                      name="calendar-month"
+                      size={24}
+                      color={colors.secondary}
+                    />
+                    <Text style={styles.sectionTitle}>
+                      Events & Meetings Calendar
+                    </Text>
+                  </View>
+
+                  {/* Calendar Header */}
+                  <View style={styles.calendarHeader}>
+                    <Text style={styles.calendarMonth}>
+                      {monthNames[month]} {year}
+                    </Text>
+                    <View style={styles.calendarNav}>
+                      <TouchableOpacity
+                        onPress={handlePrevMonth}
+                        style={styles.calendarNavButton}
+                      >
+                        <MaterialIcons
+                          name="chevron-left"
+                          size={20}
+                          color={colors.onSurface}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleNextMonth}
+                        style={styles.calendarNavButton}
+                      >
+                        <MaterialIcons
+                          name="chevron-right"
+                          size={20}
+                          color={colors.onSurface}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Weekday Labels */}
+                  <View style={styles.weekdayContainer}>
+                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                      <Text key={day} style={styles.weekdayText}>
+                        {day}
+                      </Text>
+                    ))}
+                  </View>
+
+                  {/* Calendar Grid */}
+                  <View style={styles.calendarGrid}>
+                    {calendarCells.map((cell, idx) => {
+                      const dayEvents = getEventsForDay(cell);
+                      const isToday =
+                        cell.day === 3 &&
+                        cell.month === 5 &&
+                        cell.year === 2026;
+                      const isSelected =
+                        selectedCell &&
+                        selectedCell.day === cell.day &&
+                        selectedCell.month === cell.month &&
+                        selectedCell.year === cell.year;
+
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          style={[
+                            styles.calendarCell,
+                            !cell.isCurrentMonth &&
+                              styles.calendarCellOtherMonth,
+                            isSelected && styles.calendarCellSelected,
+                            isToday && !isSelected && styles.calendarCellToday,
+                          ]}
+                          onPress={() => {
+                            if (isSelected) {
+                              setSelectedCell(null);
+                            } else {
+                              setSelectedCell(cell);
+                            }
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.calendarCellText,
+                              !cell.isCurrentMonth &&
+                                styles.calendarCellTextOther,
+                              isSelected && styles.calendarCellTextSelected,
+                            ]}
+                          >
+                            {cell.day}
+                          </Text>
+                          {dayEvents.length > 0 && (
+                            <View
+                              style={[
+                                styles.calendarDot,
+                                isSelected && styles.calendarDotSelected,
+                              ]}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Events List */}
+                  <View style={styles.eventsContainer}>
+                    <View style={styles.eventsHeader}>
+                      <Text style={styles.eventsTitle}>
+                        {selectedCell
+                          ? `Events on ${monthNames[selectedCell.month]} ${selectedCell.day}, ${selectedCell.year}`
+                          : `Events in ${monthNames[month]} ${year}`}
+                      </Text>
+                      {selectedCell && (
+                        <TouchableOpacity onPress={() => setSelectedCell(null)}>
+                          <Text style={styles.showAllText}>Show All Month</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {displayedEvents.map((event) => (
+                      <EventCard key={event.id} event={event} />
+                    ))}
+                    {displayedEvents.length === 0 && (
+                      <Text style={styles.noEventsText}>
+                        No events scheduled for this period.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+
+        {/* Add Modal */}
+        <Modal
+          visible={showAddModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowAddModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Launch New {modalType}</Text>
+                <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                  <MaterialIcons name="close" size={24} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalForm}>
+                <View>
+                  <Text style={styles.formLabel}>Title / Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder={`e.g. ${modalType === "Program" ? "Vocational Training Camp" : "PTA Special Assembly"}`}
+                    placeholderTextColor="#9ca3af"
+                    value={newName}
+                    onChangeText={setNewName}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.formLabel}>Description *</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.textArea]}
+                    placeholder="Explain goals, agendas, or outlines."
+                    placeholderTextColor="#9ca3af"
+                    value={newDesc}
+                    onChangeText={setNewDesc}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {modalType === "Program" ? (
+                  <View>
+                    <Text style={styles.formLabel}>
+                      Planned Duration (e.g. 6 Months)
+                    </Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g. 4 Months"
+                      placeholderTextColor="#9ca3af"
+                      value={newDate}
+                      onChangeText={setNewDate}
+                    />
+                  </View>
+                ) : (
+                  <View>
+                    <Text style={styles.formLabel}>Event Date & Time *</Text>
+                    <TouchableOpacity
+                      style={styles.datePickerButton}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <MaterialIcons
+                        name="event"
+                        size={20}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.datePickerText}>
+                        {tempEventDate.toDateString()} at{" "}
+                        {tempEventTime.toLocaleTimeString()}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View>
+                  <Text style={styles.formLabel}>
+                    {modalType === "Program"
+                      ? "Expected Participants (e.g. 150 Enrolled)"
+                      : "Location / Venue"}
+                  </Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder={`e.g. ${modalType === "Program" ? "80 Enrolled" : "Classroom 4A"}`}
+                    placeholderTextColor="#9ca3af"
+                    value={newLoc}
+                    onChangeText={setNewLoc}
+                  />
+                </View>
+
+                <View style={styles.formButtons}>
+                  <TouchableOpacity
+                    onPress={() => setShowAddModal(false)}
+                    style={styles.cancelButton}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleAddSubmit}
+                    style={styles.submitButton}
+                  >
+                    <Text style={styles.submitButtonText}>Launch Now</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Date/Time Pickers */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={tempEventDate}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                setTempEventDate(selectedDate);
+                setShowTimePicker(true);
+              }
+            }}
+          />
+        )}
+        {showTimePicker && (
+          <DateTimePicker
+            value={tempEventTime}
+            mode="time"
+            display="default"
+            onChange={(event, selectedTime) => {
+              setShowTimePicker(false);
+              if (selectedTime) {
+                setTempEventTime(selectedTime);
+              }
+            }}
+          />
+        )}
+      </View>
+    </RouteGuard>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
   // Sidebar Styles
   overlay: {
     position: "absolute",
@@ -1239,7 +1408,6 @@ const styles = StyleSheet.create({
   dropdownTextLogout: {
     color: "#ef4444",
   },
-  // Authentication divider styles
   menuDivider: {
     flexDirection: "row",
     alignItems: "center",
@@ -1259,14 +1427,11 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-
   // Main Container
   container: {
     flex: 1,
     backgroundColor: colors.surface,
   },
-
-  // Header Styles
   header: {
     backgroundColor: "rgba(255,255,255,0.95)",
     borderBottomWidth: 1,
@@ -1303,14 +1468,10 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
-
-  // ScrollView Content
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
   },
-
-  // Back Button
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1323,8 +1484,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: "#64748b",
   },
-
-  // Header Section
   sectionLabel: {
     fontSize: 10,
     fontWeight: "600",
@@ -1339,8 +1498,6 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     marginBottom: 20,
   },
-
-  // Action Buttons
   actionButtons: {
     flexDirection: "row",
     gap: 12,
@@ -1383,8 +1540,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.onPrimary,
   },
-
-  // Statistics Cards
   statsContainer: {
     gap: 16,
     marginBottom: 24,
@@ -1417,8 +1572,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.onSurfaceVariant,
   },
-
-  // Two Column Layout
   twoColumnLayout: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1432,8 +1585,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 280,
   },
-
-  // Section Cards
   sectionCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 16,
@@ -1455,8 +1606,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.onSurface,
   },
-
-  // Program Cards
   programCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -1517,8 +1666,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.primary,
   },
-
-  // Calendar Styles
   calendarHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1591,8 +1738,6 @@ const styles = StyleSheet.create({
   calendarDotSelected: {
     backgroundColor: colors.onPrimary,
   },
-
-  // Events Container
   eventsContainer: {
     borderTopWidth: 1,
     borderTopColor: colors.outlineVariant,
@@ -1614,8 +1759,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.primary,
   },
-
-  // Event Cards
   eventCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -1679,8 +1822,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.onSurfaceVariant,
   },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -1709,8 +1850,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-
-  // Form Styles
   formLabel: {
     fontSize: 11,
     fontWeight: "600",
