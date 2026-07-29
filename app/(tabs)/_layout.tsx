@@ -1,16 +1,21 @@
 import { useAuth } from "@/lib/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 export default function TabLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const hasRedirected = useRef(false); // ✅ Prevent multiple redirects
 
   // Protect all tabs - redirect to login if not authenticated
   useEffect(() => {
+    // ✅ Only redirect once
+    if (hasRedirected.current) return;
+
     if (!isLoading && !isAuthenticated) {
+      hasRedirected.current = true;
       router.replace("/login");
     }
   }, [isAuthenticated, isLoading]);
@@ -31,7 +36,7 @@ export default function TabLayout() {
     );
   }
 
-  // Return null if not authenticated (will redirect via useEffect)
+  // ✅ Return null if not authenticated (will redirect via useEffect)
   if (!isAuthenticated) {
     return null;
   }
@@ -41,12 +46,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { display: "none" }, // Hide tab bar
+        tabBarStyle: { display: "none" },
         tabBarActiveTintColor: "#0d9488",
         tabBarInactiveTintColor: "#94a3b8",
       }}
     >
-      {/*  Dashboard - MUST match file name (index.tsx) */}
       <Tabs.Screen
         name="index"
         options={{
@@ -56,8 +60,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Education Hub - MUST match file name */}
       <Tabs.Screen
         name="education_management_hub"
         options={{
@@ -67,8 +69,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Schools Module */}
       <Tabs.Screen
         name="education_schools_module"
         options={{
@@ -78,8 +78,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/* Fellows Module */}
       <Tabs.Screen
         name="education_fellows_module"
         options={{
@@ -89,8 +87,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Students Module */}
       <Tabs.Screen
         name="education_students_module"
         options={{
@@ -100,8 +96,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  PTA Programs */}
       <Tabs.Screen
         name="education_pta_programs"
         options={{
@@ -111,8 +105,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Livelihood Hub */}
       <Tabs.Screen
         name="livelihood_management_hub"
         options={{
@@ -122,8 +114,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Goat Rearing */}
       <Tabs.Screen
         name="livelihood_goat_rearing_1"
         options={{
@@ -133,8 +123,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Sugarcane Cultivation */}
       <Tabs.Screen
         name="livelihood_sugarcane_cultivation"
         options={{
@@ -144,8 +132,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Beneficiaries */}
       <Tabs.Screen
         name="beneficiary_master_profile"
         options={{
@@ -155,8 +141,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Disaster Relief */}
       <Tabs.Screen
         name="disaster_relief_management"
         options={{
@@ -166,8 +150,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  HR Management */}
       <Tabs.Screen
         name="hr_employee_management"
         options={{
@@ -177,8 +159,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Admin Access Control */}
       <Tabs.Screen
         name="admin_access_control"
         options={{
@@ -188,8 +168,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/*  Leaves */}
       <Tabs.Screen
         name="leaves"
         options={{
@@ -199,8 +177,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/* Profile */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -210,8 +186,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-      {/* Explore - Remove if you don't have this file */}
       <Tabs.Screen
         name="explore"
         options={{

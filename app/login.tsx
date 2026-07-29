@@ -1,9 +1,9 @@
 import { useToast } from "@/context/ToastContext";
-import { ApiError } from "@/lib/api";
+import { ApiError, checkAPIHealth } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -34,10 +34,27 @@ export default function LoginPage() {
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">(
+    "checking",
+  );
 
   const { login } = useAuth();
   const toast = useToast();
   const router = useRouter();
+
+  // ============================================
+  // CHECK API HEALTH ON MOUNT
+  // ============================================
+  useEffect(() => {
+    const checkHealth = async () => {
+      const isHealthy = await checkAPIHealth();
+      setApiStatus(isHealthy ? "online" : "offline");
+      if (!isHealthy) {
+        console.warn("⚠️ API server might be offline");
+      }
+    };
+    checkHealth();
+  }, []);
 
   // ============================================
   // VALIDATION
@@ -70,14 +87,23 @@ export default function LoginPage() {
   const handleLogin = async () => {
     if (!validate()) return;
 
+    // Check API status before attempting login
+    if (apiStatus === "offline") {
+      setFormError("Server is not responding. Please try again later.");
+      toast.error("Server is not responding");
+      return;
+    }
+
     setLoading(true);
     setFormError("");
 
     try {
+      console.log("🔍 Attempting login with:", identifier);
       await login(identifier.trim(), password);
       toast.success("Welcome back!");
       router.replace("/");
     } catch (err: unknown) {
+      console.error("❌ Login error:", err);
       const message =
         err instanceof ApiError
           ? err.message
@@ -143,6 +169,27 @@ export default function LoginPage() {
           {/* ===== FORM PANEL ===== */}
           <View style={styles.formPanel}>
             <View style={styles.formInner}>
+              {/* API Status Indicator */}
+              <View style={styles.apiStatusContainer}>
+                <View
+                  style={[
+                    styles.apiStatusDot,
+                    apiStatus === "online"
+                      ? styles.apiStatusOnline
+                      : apiStatus === "offline"
+                        ? styles.apiStatusOffline
+                        : styles.apiStatusChecking,
+                  ]}
+                />
+                <Text style={styles.apiStatusText}>
+                  {apiStatus === "online"
+                    ? "Server Online"
+                    : apiStatus === "offline"
+                      ? "Server Offline"
+                      : "Checking Server..."}
+                </Text>
+              </View>
+
               {/* Header */}
               <View style={styles.formHeader}>
                 <Text style={styles.formTitle}>Welcome back</Text>
@@ -288,7 +335,7 @@ export default function LoginPage() {
                     loading ? styles.btnDisabled : null,
                   ]}
                   onPress={handleLogin}
-                  disabled={loading}
+                  disabled={loading || apiStatus === "offline"}
                   activeOpacity={0.8}
                 >
                   {loading ? (
@@ -311,7 +358,10 @@ export default function LoginPage() {
                 {/* Register Button */}
                 <TouchableOpacity
                   style={styles.btnSecondary}
-                  onPress={() => router.push("/registration")}
+                  onPress={() => {
+                    console.log(" Navigating to registration...");
+                    router.push("/(tabs)/registration");
+                  }}
                   disabled={loading}
                   activeOpacity={0.7}
                 >
@@ -435,6 +485,34 @@ const styles = StyleSheet.create({
   },
   formInner: {
     flex: 1,
+  },
+  apiStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f8fafc",
+  },
+  apiStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  apiStatusOnline: {
+    backgroundColor: "#10b981",
+  },
+  apiStatusOffline: {
+    backgroundColor: "#ef4444",
+  },
+  apiStatusChecking: {
+    backgroundColor: "#f59e0b",
+  },
+  apiStatusText: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
   },
   formHeader: {
     marginBottom: 28,

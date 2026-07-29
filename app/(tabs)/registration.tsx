@@ -52,11 +52,11 @@ export default function RegisterPage() {
   const [strengthText, setStrengthText] = useState("");
 
   // Hooks
-  const { register } = useAuth(); // ← Using useAuth().register() instead of local storage
+  const { register } = useAuth();
   const toast = useToast();
   const router = useRouter();
 
-  // Roles (these should ideally come from an API)
+  // Roles
   const roles = [
     { id: "cm0v1a2b3c4d5e6f7g8h9i0j1", name: "Fellow" },
     { id: "cm0v1a2b3c4d5e6f7g8h9i0j2", name: "Program Manager" },
@@ -177,7 +177,7 @@ export default function RegisterPage() {
   };
 
   // ============================================
-  // REGISTRATION HANDLER (UPDATED)
+  // REGISTRATION HANDLER - Works with Local Storage
   // ============================================
   const handleRegister = async () => {
     if (!validate()) return;
@@ -186,15 +186,20 @@ export default function RegisterPage() {
     setFormError("");
 
     try {
-      // USING useAuth().register() - follows the API pattern from README
-      await register({
+      // ✅ Get selected role name
+      const selectedRole = roles.find((item) => item.id === roleId);
+
+      // ✅ Register using local storage (works offline)
+      const result = await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim().toLowerCase(),
         password: password,
         mobile: mobile.trim(),
-        roleId: roleId, // Send the role UUID
+        roleId: roleId,
       });
+
+      console.log("✅ Registration successful:", result);
 
       // Success! Show modal and redirect
       toast.success("Registration successful! Please wait for admin approval.");
@@ -206,7 +211,9 @@ export default function RegisterPage() {
         router.push("/login");
       }, 2500);
     } catch (err: unknown) {
-      // Type-safe error handling - matches login.tsx pattern
+      console.error("❌ Registration error:", err);
+
+      // Type-safe error handling
       const message =
         err instanceof ApiError
           ? err.message
