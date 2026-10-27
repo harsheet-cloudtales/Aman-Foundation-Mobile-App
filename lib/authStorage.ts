@@ -1,6 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import bcrypt from "bcryptjs";
 
+// ============================================
+// TYPES
+// ============================================
 export interface AuthUser {
   id: string;
   name: string;
@@ -36,13 +39,36 @@ interface StoredUserRecord extends AuthUser {
   createdAt: string;
 }
 
+// ============================================
+// CONSTANTS
+// ============================================
 const USERS_KEY = "@aman_foundation_users";
 const SESSION_KEY = "@aman_foundation_session";
 const DEFAULT_ADMIN_EMAIL = "admin@amanfoundation.org";
 const DEFAULT_ADMIN_PASSWORD = "admin123";
 
+/**
+ * Status values stored in AsyncStorage.
+ * Using uppercase to stay consistent with existing data.
+ * All comparisons are done case-insensitively via `normalizeStatus`.
+ */
+export const USER_STATUS = {
+  PENDING: "PENDING",
+  ACTIVE: "ACTIVE",
+  REJECTED: "REJECTED",
+} as const;
+
+export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
+
+// ============================================
+// HELPERS
+// ============================================
 function normalizeValue(value?: string) {
   return (value || "").trim().toLowerCase();
+}
+
+function normalizeStatus(value?: string): string {
+  return (value || "").trim().toUpperCase();
 }
 
 function sanitizeUser(user: StoredUserRecord): AuthUser {
@@ -109,13 +135,21 @@ async function ensureDefaultAdminUser() {
     passwordHash,
     roleId: "admin",
     roleName: "Admin",
-    status: "ACTIVE",
+    status: USER_STATUS.ACTIVE,
     createdAt: new Date().toISOString(),
   });
 
   await writeUsers(users);
 }
 
+// ============================================
+// EXPORTED STORAGE KEY (for admin pages that need direct access)
+// ============================================
+export const USERS_STORAGE_KEY = USERS_KEY;
+
+// ============================================
+// REGISTRATION
+// ============================================
 export async function registerLocalUser(payload: RegistrationPayload) {
   await ensureDefaultAdminUser();
 
@@ -142,7 +176,7 @@ export async function registerLocalUser(payload: RegistrationPayload) {
     username: payload.email.trim().toLowerCase(),
     roleId: payload.roleId,
     roleName: resolveRoleName(payload.roleId, payload.roleName),
-    status: "PENDING",
+    status: USER_STATUS.PENDING,
     passwordHash,
     createdAt: new Date().toISOString(),
   };
@@ -153,6 +187,9 @@ export async function registerLocalUser(payload: RegistrationPayload) {
   return sanitizeUser(userRecord);
 }
 
+// ============================================
+// LOGIN
+// ============================================
 export async function authenticateLocalUser(
   identifier: string,
   password: string,
@@ -178,6 +215,24 @@ export async function authenticateLocalUser(
     return null;
   }
 
+  // Block non-active accounts with a clear error message.
+  const status = normalizeStatus(user.status);
+  if (status !== USER_STATUS.ACTIVE) {
+    if (status === USER_STATUS.PENDING) {
+      throw new Error(
+        "Your account is pending admin approval. Please try again later.",
+      );
+    }
+    if (status === USER_STATUS.REJECTED) {
+      throw new Error(
+        "Your account request was rejected. Please contact an administrator.",
+      );
+    }
+    throw new Error(
+      "Your account is not active. Please contact an administrator.",
+    );
+  }
+
   const token = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return {
     token,
@@ -185,6 +240,79 @@ export async function authenticateLocalUser(
   };
 }
 
+// ============================================
+// ADMIN / ACCESS PORTAL HELPERS
+// ============================================
+
+/**
+ * Returns every stored user (password hash stripped).
+ */
+export async function getAllUsers(): Promise<AuthUser[]> {
+  const users = await readUsers();
+  return users.map(sanitizeUser);
+}
+
+/**
+ * Returns only users whose status is PENDING (case-insensitive).
+ */
+export async function getPendingUsers(): Promise<AuthUser[]> {
+  const users = await readUsers();
+  return users
+    .filter((u) => normalizeStatus(u.status) === USER_STATUS.PENDING)
+    .map(sanitizeUser);
+}
+
+/**
+ * Returns only users whose status is ACTIVE (case-insensitive).
+ */
+export async function getActiveUsers(): Promise<AuthUser[]> {
+  const users = await readUsers();
+  return users
+    .filter((u) => normalizeStatus(u.status) === USER_STATUS.ACTIVE)
+    .map(sanitizeUser);
+}
+
+/**
+ * Returns only users whose status is REJECTED (case-insensitive).
+ */
+export async function getRejectedUsers(): Promise<AuthUser[]> {
+  const users = await readUsers();
+  return users
+    .filter((u) => normalizeStatus(u.status) === USER_STATUS.REJECTED)
+    .map(sanitizeUser);
+}
+
+/**
+ * Approve a pending user → status becomes ACTIVE.
+ */
+export async function approveUser(userId: string): Promise<void> {
+  const users = await readUsers();
+  const index = users.findIndex((u) => u.id === userId);
+  if (index === -1) {
+    throw new Error("User not found.");
+  }
+
+  users[index] = { ...users[index], status: USER_STATUS.ACTIVE };
+  await writeUsers(users);
+}
+
+/**
+ * Reject a pending user → status becomes REJECTED.
+ */
+export async function rejectUser(userId: string): Promise<void> {
+  const users = await readUsers();
+  const index = users.findIndex((u) => u.id === userId);
+  if (index === -1) {
+    throw new Error("User not found.");
+  }
+
+  users[index] = { ...users[index], status: USER_STATUS.REJECTED };
+  await writeUsers(users);
+}
+
+// ============================================
+// SESSION
+// ============================================
 export async function saveSession(session: AuthSession) {
   await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }

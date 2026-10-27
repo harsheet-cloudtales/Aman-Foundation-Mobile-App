@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, setApiToken } from "./api";
 import {
+  authenticateLocalUser,
   clearStoredSession,
   getStoredSession,
+  registerLocalUser,
   saveSession,
   type AuthUser,
 } from "./authStorage";
@@ -12,13 +14,13 @@ export interface User extends AuthUser {}
 interface AuthState {
   token: string | null;
   user: User | null;
-  isLoading: boolean; //  Added isLoading to state
+  isLoading: boolean; // Only true during initial session restore
 }
 
 let authState: AuthState = {
   token: null,
   user: null,
-  isLoading: true, //  Start with loading true
+  isLoading: true,
 };
 
 const listeners = new Set<(state: AuthState) => void>();
@@ -26,6 +28,23 @@ const listeners = new Set<(state: AuthState) => void>();
 const notify = () => {
   const snapshot = { ...authState };
   listeners.forEach((listener) => listener(snapshot));
+};
+
+/**
+ * Centralized state setter that only notifies when something actually changed.
+ * This prevents redundant re-renders across every `useAuth()` consumer.
+ */
+const setAuthState = (next: Partial<AuthState>) => {
+  const merged: AuthState = { ...authState, ...next };
+  if (
+    merged.token === authState.token &&
+    merged.user === authState.user &&
+    merged.isLoading === authState.isLoading
+  ) {
+    return;
+  }
+  authState = merged;
+  notify();
 };
 
 interface LoginResponse {
@@ -73,84 +92,99 @@ interface ProfileResponse {
   };
 }
 
+/**
+ * Singleton promise so the session restore only runs ONCE for the entire app,
+ * no matter how many components call `useAuth()`.
+ */
+let restorePromise: Promise<void> | null = null;
+
+const restoreSession = (): Promise<void> => {
+  if (restorePromise) return restorePromise;
+
+  restorePromise = (async () => {
+    try {
+      setAuthState({ isLoading: true });
+
+      const persistedSession = await getStoredSession();
+
+      if (!persistedSession) {
+        setAuthState({ token: null, user: null, isLoading: false });
+        return;
+      }
+
+      // Local device sessions are already trusted and do not need a remote
+      // profile validation call, which would fail against the configured server.
+      if (persistedSession.token.startsWith("local-")) {
+        setAuthState({
+          token: persistedSession.token,
+          user: persistedSession.user as User,
+          isLoading: false,
+        });
+        setApiToken(persistedSession.token);
+        return;
+      }
+
+      // Optimistically hydrate from storage while we validate the token.
+      authState = {
+        token: persistedSession.token,
+        user: persistedSession.user,
+        isLoading: true,
+      };
+      setApiToken(persistedSession.token);
+      notify();
+
+      try {
+        const profile = await api.get<ProfileResponse>("/api/users/profile");
+
+        if (profile.success && profile.data) {
+          setAuthState({
+            token: persistedSession.token,
+            user: {
+              id: profile.data.id,
+              name: profile.data.name,
+              username: profile.data.username,
+              email: profile.data.email,
+              roleId: profile.data.roleId,
+              roleName: profile.data.roleName,
+              status: profile.data.status,
+              fellowId: (profile.data as Record<string, unknown>).fellowId as
+                | string
+                | null,
+              fellowName: (profile.data as Record<string, unknown>)
+                .fellowName as string | null,
+            },
+            isLoading: false,
+          });
+        } else {
+          // No profile data returned — treat as unauthenticated.
+          authState = { token: null, user: null, isLoading: false };
+          setApiToken(null);
+          notify();
+          await clearStoredSession();
+        }
+      } catch {
+        // Token is invalid, clear session.
+        authState = { token: null, user: null, isLoading: false };
+        setApiToken(null);
+        notify();
+        await clearStoredSession();
+      }
+    } catch (error) {
+      console.error("Session restore error:", error);
+      authState = { token: null, user: null, isLoading: false };
+      notify();
+    }
+  })();
+
+  return restorePromise;
+};
+
 export function useAuth() {
   const [state, setState] = useState<AuthState>(authState);
 
   useEffect(() => {
     const listener = (nextState: AuthState) => setState(nextState);
     listeners.add(listener);
-
-    const restoreSession = async () => {
-      try {
-        //  Set loading true while restoring
-        authState = { ...authState, isLoading: true };
-        notify();
-
-        const persistedSession = await getStoredSession();
-        if (persistedSession) {
-          authState = {
-            token: persistedSession.token,
-            user: persistedSession.user,
-            isLoading: true, // Still loading while validating
-          };
-          setApiToken(persistedSession.token);
-          notify();
-
-          try {
-            const profile =
-              await api.get<ProfileResponse>("/api/users/profile");
-            if (profile.success && profile.data) {
-              authState = {
-                token: persistedSession.token,
-                user: {
-                  id: profile.data.id,
-                  name: profile.data.name,
-                  username: profile.data.username,
-                  email: profile.data.email,
-                  roleId: profile.data.roleId,
-                  roleName: profile.data.roleName,
-                  status: profile.data.status,
-                  // mobile: profile.data.mobile,
-                  fellowId: (profile.data as Record<string, unknown>)
-                    .fellowId as string | null,
-                  fellowName: (profile.data as Record<string, unknown>)
-                    .fellowName as string | null,
-                },
-                isLoading: false, //  Done loading
-              };
-              notify();
-            }
-          } catch {
-            // Token is invalid, clear session
-            authState = {
-              token: null,
-              user: null,
-              isLoading: false, //  Done loading
-            };
-            setApiToken(null);
-            notify();
-            await clearStoredSession();
-          }
-        } else {
-          //  No session found, done loading
-          authState = {
-            token: null,
-            user: null,
-            isLoading: false,
-          };
-          notify();
-        }
-      } catch (error) {
-        // Error during restore, done loading
-        console.error("Session restore error:", error);
-        authState = {
-          token: null,
-          user: null,
-          isLoading: false,
-        };
-        notify();
-      }
-    };
 
     void restoreSession();
 
@@ -160,50 +194,66 @@ export function useAuth() {
   }, []);
 
   const login = async (identifier: string, password: string) => {
+    // Prefer the local device-backed auth flow used by this app.
     try {
-      // Set loading true during login
-      authState = { ...authState, isLoading: true };
-      notify();
+      const localSession = await authenticateLocalUser(identifier, password);
+      if (localSession) {
+        const nextUser: User = {
+          id: localSession.user.id,
+          name: localSession.user.name,
+          username: localSession.user.username,
+          email: localSession.user.email,
+          roleId: localSession.user.roleId,
+          roleName: localSession.user.roleName,
+          fellowId: (localSession.user as Record<string, unknown>).fellowId as
+            | string
+            | null,
+          fellowName: (localSession.user as Record<string, unknown>)
+            .fellowName as string | null,
+        };
 
-      const isEmail = identifier.includes("@");
-      const body = isEmail
-        ? { email: identifier, password }
-        : { username: identifier, password };
-
-      const response = await api.post<LoginResponse>(
-        "/api/auth/login",
-        body,
-        false,
-      );
-
-      const { token, user } = response.data;
-
-      setApiToken(token);
-
-      const nextState: AuthState = {
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          username: user.username,
-          email: user.email,
-          roleId: user.roleId,
-          roleName: user.roleName,
-          fellowId: user.fellowId,
-          fellowName: user.fellowName,
-        },
-        isLoading: false, //  Done loading
-      };
-
-      authState = nextState;
-      notify();
-      await saveSession({ token, user: nextState.user });
+        setApiToken(localSession.token);
+        setAuthState({
+          token: localSession.token,
+          user: nextUser,
+          isLoading: false,
+        });
+        await saveSession({ token: localSession.token, user: nextUser });
+        return;
+      }
     } catch (error) {
-      //  Error during login, done loading
-      authState = { ...authState, isLoading: false };
-      notify();
-      throw error;
+      console.warn("Local auth failed, trying remote login fallback:", error);
     }
+
+    // Fallback for a real backend, if one is configured and working.
+    const isEmail = identifier.includes("@");
+    const body = isEmail
+      ? { email: identifier, password }
+      : { username: identifier, password };
+
+    const response = await api.post<LoginResponse>(
+      "/api/auth/login",
+      body,
+      false,
+    );
+
+    const { token, user } = response.data;
+
+    setApiToken(token);
+
+    const nextUser: User = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      roleId: user.roleId,
+      roleName: user.roleName,
+      fellowId: user.fellowId,
+      fellowName: user.fellowName,
+    };
+
+    setAuthState({ token, user: nextUser, isLoading: false });
+    await saveSession({ token, user: nextUser });
   };
 
   const register = async (payload: {
@@ -214,43 +264,29 @@ export function useAuth() {
     mobile?: string;
     roleId: string;
   }) => {
-    try {
-      //  Set loading true during registration
-      authState = { ...authState, isLoading: true };
-      notify();
+    const localUser = await registerLocalUser({
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      email: payload.email,
+      mobile: payload.mobile ?? "",
+      password: payload.password,
+      roleId: payload.roleId,
+    });
 
-      await api.post<SignupResponse>("/api/auth/signup", payload, false);
-    } catch (error) {
-      throw error;
-    } finally {
-      // Done loading
-      authState = { ...authState, isLoading: false };
-      notify();
-    }
+    return localUser;
   };
 
   const logout = async () => {
-    try {
-      // Set loading true during logout
-      authState = { ...authState, isLoading: true };
-      notify();
-
-      authState = { token: null, user: null, isLoading: false };
-      setApiToken(null);
-      notify();
-      await clearStoredSession();
-    } catch (error) {
-      // Error during logout, done loading
-      authState = { token: null, user: null, isLoading: false };
-      notify();
-      throw error;
-    }
+    // Reset state first, then clear storage. No global loading toggle.
+    setAuthState({ token: null, user: null, isLoading: false });
+    setApiToken(null);
+    await clearStoredSession();
   };
 
   return {
     token: state.token,
     user: state.user,
-    isLoading: state.isLoading, // Return isLoading
+    isLoading: state.isLoading,
     login,
     register,
     logout,

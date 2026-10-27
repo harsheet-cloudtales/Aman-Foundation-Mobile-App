@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  Keyboard,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -24,7 +25,7 @@ import {
   View,
 } from "react-native";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 // ============================================
 // TYPES
@@ -98,71 +99,163 @@ const colors = {
 };
 
 // ============================================
-// FOOTER COMPONENT
+// ALL FEATURES (FOR SEARCH)
 // ============================================
-const Footer = () => {
-  return (
-    <View style={styles.footer}>
-      <View style={styles.footerContent}>
-        <View style={styles.footerSection}>
-          <View style={styles.footerLogoContainer}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryContainer]}
-              style={styles.footerLogoIcon}
-            >
-              <Ionicons name="business-outline" size={24} color="#fff" />
-            </LinearGradient>
-            <Text style={styles.footerFoundationName}>Aman Foundation</Text>
-          </View>
-          <Text style={styles.footerTagline}>
-            Creating lasting impact in communities
-          </Text>
-        </View>
+const ALL_FEATURES = [
+  {
+    title: "Management Hub",
+    route: "/education_management_hub",
+    icon: "library-outline",
+    category: "Education",
+  },
+  {
+    title: "Schools Overview",
+    route: "/education_schools_module",
+    icon: "business-outline",
+    category: "Education",
+  },
+  {
+    title: "Fellows Directory",
+    route: "/education_fellows_module",
+    icon: "people-outline",
+    category: "Education",
+  },
+  {
+    title: "Active Programs",
+    route: "/education_students_module",
+    icon: "calendar-outline",
+    category: "Education",
+  },
+  {
+    title: "PTA and Programs",
+    route: "/education_pta_programs",
+    icon: "document-text-outline",
+    category: "Education",
+  },
+  {
+    title: "After-School-Students",
+    route: "/after-school-students",
+    icon: "document-text-outline",
+    category: "Education",
+  },
+  {
+    title: "After-School-Centres",
+    route: "/after-school-centres",
+    icon: "document-text-outline",
+    category: "Education",
+  },
+  {
+    title: "PM Reflection",
+    route: "/PM-Reflection",
+    icon: "stats-chart-outline",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Fellow Performance Tracking",
+    route: "/PerformanceTracking",
+    icon: "clipboard-outline",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Classroom Visits",
+    route: "/fellow-observation/classroom-visits",
+    icon: "assignment-turned-in",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Observation Reports",
+    route: "/fellow-observation/reports",
+    icon: "description",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Livelihood Management Hub",
+    route: "/livelihood_management_hub",
+    icon: "apps-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Goat Rearing",
+    route: "/livelihood_goat_rearing_1",
+    icon: "paw-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Agriculture Support",
+    route: "/livelihood_sugarcane_cultivation",
+    icon: "leaf-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Beneficiaries",
+    route: "/beneficiaries",
+    icon: "people-circle-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Disaster Relief",
+    route: "/disaster_relief_management",
+    icon: "snow-outline",
+    category: "General",
+  },
+  {
+    title: "Travel Management",
+    route: "/travel",
+    icon: "airplane",
+    category: "General",
+  },
+  {
+    title: "HR Management",
+    route: "/hr_employee_management",
+    icon: "people-outline",
+    category: "HR",
+  },
+  {
+    title: "Admin & Access",
+    route: "/admin_access_control",
+    icon: "document-text-outline",
+    category: "Admin",
+  },
+  {
+    title: "Leaves",
+    route: "/(tabs)/leaves",
+    icon: "calendar-outline",
+    category: "HR",
+  },
+  {
+    title: "My Profile",
+    route: "/profile",
+    icon: "person-outline",
+    category: "Account",
+  },
+];
 
-        <View style={styles.footerSection}>
-          <Text style={styles.footerSectionTitle}>Contact Us</Text>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="call-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>+91 300 1234567</Text>
-          </View>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="mail-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>
-              info@amanfoundation.org
-            </Text>
-          </View>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="location-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>Mumbai, India</Text>
-          </View>
-        </View>
-
-        <View style={styles.footerSection}>
-          <Text style={styles.footerSectionTitle}>Foundation Address</Text>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="home-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerAddressText}>
-              Mumbai{"\n"}
-              Sector F-11/3, Maha{"\n"}
-              India
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.footerBottom}>
-        <Text style={styles.footerCopyright}>
-          © 2026 Aman Foundation. All Rights Reserved.
+// ============================================
+// FOOTER COMPONENT (synced with dashboard/admin)
+// ============================================
+const Footer = () => (
+  <View style={styles.footer}>
+    <View style={styles.footerLogoContainer}>
+      <LinearGradient
+        colors={[colors.primary, colors.primaryContainer]}
+        style={styles.footerLogoIcon}
+      >
+        <Ionicons name="business-outline" size={22} color="#fff" />
+      </LinearGradient>
+      <View>
+        <Text style={styles.footerFoundationName}>Aman Foundation</Text>
+        <Text style={styles.footerTagline}>
+          Creating lasting impact in communities
         </Text>
-        <View style={styles.footerLinks}>
-          <Text style={styles.footerLinkText}>Terms & Conditions</Text>
-          <Text style={styles.footerDot}>•</Text>
-          <Text style={styles.footerLinkText}>Privacy Policy</Text>
-        </View>
       </View>
     </View>
-  );
-};
+    <View style={styles.footerBottom}>
+      <Text style={styles.footerCopyright}>
+        © 2026 Aman Foundation. All Rights Reserved.
+      </Text>
+    </View>
+  </View>
+);
 
 // ============================================
 // MAIN COMPONENT
@@ -180,14 +273,22 @@ export default function DisasterRelief() {
   const [broadcastSeverity, setBroadcastSeverity] = useState("Urgent");
   const [activeTab, setActiveTab] = useState("Help Providers");
 
+  // Header Search Bar State
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [headerSearchQuery, setHeaderSearchQuery] = useState("");
+  const expandAnim = useRef(new Animated.Value(0)).current;
+  const dropdownAnim = useRef(new Animated.Value(0)).current;
+
   // Dropdown states
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
+  const [reportsDropdownOpen, setReportsDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
 
   // Animated values
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
+  const reportsRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -209,13 +310,90 @@ export default function DisasterRelief() {
   const [calamityPropertyLoss, setCalamityPropertyLoss] = useState("");
 
   // ============================================
+  // HEADER SEARCH ANIMATION & DROPDOWN
+  // ============================================
+  const expandSearch = () => {
+    setIsSearchExpanded(true);
+    Animated.timing(expandAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+
+    if (headerSearchQuery.length > 0) {
+      Animated.timing(dropdownAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  const collapseSearch = () => {
+    Keyboard.dismiss();
+    Animated.timing(dropdownAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: false,
+    }).start(() => {
+      Animated.timing(expandAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start(() => {
+        setIsSearchExpanded(false);
+        setHeaderSearchQuery("");
+      });
+    });
+  };
+
+  const handleSearchTextChange = (text: string) => {
+    setHeaderSearchQuery(text);
+    if (text.length > 0) {
+      Animated.timing(dropdownAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      Animated.timing(dropdownAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  const searchBarWidth = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [40, width - 100],
+  });
+
+  const dropdownHeight = dropdownAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, height * 0.7],
+  });
+
+  const handleSearchNavigate = (route: string) => {
+    collapseSearch();
+    setTimeout(() => {
+      router.push(route as any);
+    }, 300);
+  };
+
+  const filteredFeatures = ALL_FEATURES.filter(
+    (f) =>
+      f.title.toLowerCase().includes(headerSearchQuery.toLowerCase()) ||
+      f.category.toLowerCase().includes(headerSearchQuery.toLowerCase()),
+  );
+
+  // ============================================
   // FETCH DATA
   // ============================================
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Fetch calamities
       const calamitiesData = await api.get<Calamity[]>(
         "/api/disaster/calamities",
       );
@@ -225,7 +403,6 @@ export default function DisasterRelief() {
         setCurrentCalamity(activeCalamity || calamitiesData[0]);
       }
 
-      // Fetch providers
       const providersData = await api.get<Provider[]>(
         "/api/disaster/providers",
       );
@@ -233,7 +410,6 @@ export default function DisasterRelief() {
         setProviders(providersData);
       }
 
-      // Fetch inventory
       const inventoryData = await api.get<Inventory[]>(
         "/api/disaster/inventory",
       );
@@ -241,7 +417,6 @@ export default function DisasterRelief() {
         setInventory(inventoryData);
       }
 
-      // Fetch relief logs
       const logsData = await api.get<ReliefLog[]>("/api/disaster/logs");
       if (logsData) {
         setReliefLogs(logsData);
@@ -250,7 +425,6 @@ export default function DisasterRelief() {
       if (err instanceof ApiError) {
         console.error("Disaster data fetch error:", err.message);
       }
-      // Fallback data
       setCalamities([
         {
           id: "FLD-001",
@@ -387,6 +561,16 @@ export default function DisasterRelief() {
     setEducationDropdownOpen(!educationDropdownOpen);
   };
 
+  const toggleReportsDropdown = () => {
+    const toValue = reportsDropdownOpen ? 0 : 1;
+    Animated.timing(reportsRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setReportsDropdownOpen(!reportsDropdownOpen);
+  };
+
   const toggleLivelihoodDropdown = () => {
     const toValue = livelihoodDropdownOpen ? 0 : 1;
     Animated.timing(livelihoodRotateAnim, {
@@ -409,7 +593,9 @@ export default function DisasterRelief() {
 
   const handleNavigation = (route: string) => {
     closeMenu();
-    router.push(route);
+    setTimeout(() => {
+      router.push(route as any);
+    }, 150);
   };
 
   const handleLogout = () => {
@@ -432,6 +618,11 @@ export default function DisasterRelief() {
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const rotateReports = reportsRotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "180deg"],
   });
@@ -575,33 +766,34 @@ export default function DisasterRelief() {
           />
         )}
 
-        {/* SIDEBAR */}
+        {/* ============================================
+            SIDEBAR — copied from Dashboard
+        ============================================ */}
         <Animated.View
           style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* BRAND */}
             <View style={styles.brandContainer}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryContainer]}
-                style={styles.brandIcon}
-              >
-                <MaterialIcons name="local-library" size={22} color="#fff" />
-              </LinearGradient>
-              <View>
-                <Text style={styles.brandTitle}>Aman Foundation</Text>
-                <Text style={styles.brandSub}>Impact Portal</Text>
-              </View>
+              <Image
+                source={require("../../assets/images/logo.jpeg")}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
             </View>
 
+            {/* DASHBOARD */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => handleNavigation("/")}
             >
-              <Ionicons name="grid-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Dashboard</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="grid-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Dashboard</Text>
+              </View>
             </TouchableOpacity>
 
-            {/* EDUCATION WITH DROPDOWN */}
+            {/* EDUCATION DROPDOWN */}
             <View>
               <TouchableOpacity
                 style={styles.menuItemWithDropdown}
@@ -633,6 +825,7 @@ export default function DisasterRelief() {
                     />
                     <Text style={styles.dropdownText}>Management Hub</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -646,6 +839,7 @@ export default function DisasterRelief() {
                     />
                     <Text style={styles.dropdownText}>Schools Overview</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -655,6 +849,7 @@ export default function DisasterRelief() {
                     <Ionicons name="people-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Fellows Directory</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -666,24 +861,129 @@ export default function DisasterRelief() {
                       size={18}
                       color="#6b7280"
                     />
-                    <Text style={styles.dropdownText}>Students Directory</Text>
+                    <Text style={styles.dropdownText}>Active Programs</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() => handleNavigation("/education_pta_programs")}
                   >
                     <Ionicons
-                      name="people-circle-outline"
+                      name="document-text-outline"
                       size={18}
                       color="#6b7280"
                     />
-                    <Text style={styles.dropdownText}>PTA & Programs</Text>
+                    <Text style={styles.dropdownText}>PTA and Programs</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/after-school-students")}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>
+                      After-School-Students
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/after-school-centres")}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>
+                      After-School-Centres
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
             </View>
 
-            {/* LIVELIHOOD WITH DROPDOWN */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/(tabs)/task")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={20}
+                  color="#4b5563"
+                />
+                <Text style={styles.menuText}>Task</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/(tabs)/taskanalytics")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="bar-chart-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Task Analytics</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* FELLOW OBSERVATION (top-level dropdown) */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleReportsDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons
+                    name="bar-chart-outline"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text style={styles.menuText}>Fellow Observation</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateReports }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {reportsDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/PM-Reflection")}
+                  >
+                    <Ionicons
+                      name="stats-chart-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PM Reflection</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/PerformanceTracking")}
+                  >
+                    <Ionicons
+                      name="clipboard-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>
+                      Fellow Performance Tracking
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD DROPDOWN */}
             <View>
               <TouchableOpacity
                 style={styles.menuItemWithDropdown}
@@ -711,6 +1011,7 @@ export default function DisasterRelief() {
                     <Ionicons name="apps-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Management Hub</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -720,6 +1021,7 @@ export default function DisasterRelief() {
                     <Ionicons name="paw-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Goat Rearing</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -729,6 +1031,7 @@ export default function DisasterRelief() {
                     <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Agriculture Support</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -746,9 +1049,10 @@ export default function DisasterRelief() {
               )}
             </View>
 
+            {/* DISASTER RELIEF — ACTIVE */}
             <TouchableOpacity
               style={[styles.menuItem, styles.menuItemActive]}
-              onPress={() => handleNavigation("/disaster_relief_management")}
+              onPress={() => closeMenu()}
             >
               <Ionicons name="snow-outline" size={20} color="#fff" />
               <Text style={styles.menuTextActive}>Disaster Relief</Text>
@@ -756,25 +1060,59 @@ export default function DisasterRelief() {
 
             <TouchableOpacity
               style={styles.menuItem}
+              onPress={() => handleNavigation("/travel")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="airplane" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Travel Management</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/Reimbursement Management")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="cash" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Reimbursements Management</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
               onPress={() => handleNavigation("/hr_employee_management")}
             >
-              <Ionicons name="people-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>HR Management</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="people-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>HR Management</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => handleNavigation("/admin_access_control")}
             >
-              <Ionicons
-                name="document-text-outline"
-                size={20}
-                color="#4b5563"
-              />
-              <Text style={styles.menuText}>Admin & Access</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={20}
+                  color="#4b5563"
+                />
+                <Text style={styles.menuText}>Admin & Access</Text>
+              </View>
             </TouchableOpacity>
 
-            {/* AUTHENTICATION SECTION */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/(tabs)/leaves")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="calendar-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Leaves</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* ACCOUNT SECTION */}
             <View style={styles.menuDivider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>ACCOUNT</Text>
@@ -785,8 +1123,10 @@ export default function DisasterRelief() {
               style={styles.menuItem}
               onPress={() => handleNavigation("/profile")}
             >
-              <Ionicons name="person-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>My Profile</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="person-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>My Profile</Text>
+              </View>
             </TouchableOpacity>
 
             <View>
@@ -807,20 +1147,15 @@ export default function DisasterRelief() {
                 <View style={styles.dropdownContainer}>
                   <TouchableOpacity
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      closeMenu();
-                      router.push("/login");
-                    }}
+                    onPress={() => handleNavigation("/login")}
                   >
                     <Ionicons name="log-in-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Login Page</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      closeMenu();
-                      router.push("/registration");
-                    }}
+                    onPress={() => handleNavigation("/registration")}
                   >
                     <Ionicons
                       name="person-add-outline"
@@ -829,6 +1164,7 @@ export default function DisasterRelief() {
                     />
                     <Text style={styles.dropdownText}>Register Page</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[styles.dropdownItem, styles.dropdownItemLogout]}
                     onPress={handleLogout}
@@ -854,47 +1190,145 @@ export default function DisasterRelief() {
         <SafeAreaView style={styles.container}>
           <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-          {/* Header */}
+          {/* HEADER */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-                <MaterialIcons name="menu" size={24} color="#4B5563" />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Impact Portal</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() =>
-                  Alert.alert("Notifications", "No new notifications")
-                }
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={22}
-                  color="#6B7280"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() =>
-                  Alert.alert("Settings", "Settings will be available soon")
-                }
-              >
-                <Ionicons name="settings-outline" size={22} color="#6B7280" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push("/profile")}>
-                <Image
-                  source={{
-                    uri:
-                      user?.avatar ||
-                      "https://randomuser.me/api/portraits/women/68.jpg",
-                  }}
-                  style={styles.avatar}
-                />
-              </TouchableOpacity>
-            </View>
+            {!isSearchExpanded ? (
+              <>
+                <View style={styles.headerLeft}>
+                  <TouchableOpacity
+                    onPress={toggleMenu}
+                    style={styles.menuButton}
+                  >
+                    <MaterialIcons name="menu" size={24} color="#4B5563" />
+                  </TouchableOpacity>
+                  <Text style={styles.headerTitle}>Impact Portal</Text>
+                </View>
+
+                <View style={styles.headerRight}>
+                  <TouchableOpacity
+                    style={styles.searchIconTrigger}
+                    onPress={expandSearch}
+                  >
+                    <MaterialIcons name="search" size={24} color="#6B7280" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() =>
+                      Alert.alert("Notifications", "No new notifications")
+                    }
+                  >
+                    <Ionicons
+                      name="notifications-outline"
+                      size={24}
+                      color="#6B7280"
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => router.push("/profile")}>
+                    <Image
+                      source={{
+                        uri:
+                          user?.avatar ||
+                          "https://randomuser.me/api/portraits/women/68.jpg",
+                      }}
+                      style={styles.avatar}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              // Expanded Search Bar
+              <View style={styles.expandedSearchContainer}>
+                <Animated.View
+                  style={[
+                    styles.expandedSearchInputWrapper,
+                    { width: searchBarWidth },
+                  ]}
+                >
+                  <MaterialIcons name="search" size={20} color="#6B7280" />
+                  <TextInput
+                    style={styles.expandedSearchInput}
+                    placeholder="Search pages, tabs & forms..."
+                    placeholderTextColor="#9CA3AF"
+                    value={headerSearchQuery}
+                    onChangeText={handleSearchTextChange}
+                    autoFocus
+                    returnKeyType="search"
+                    underlineColorAndroid="transparent"
+                  />
+                  {headerSearchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => handleSearchTextChange("")}
+                    >
+                      <MaterialIcons name="close" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+                <TouchableOpacity
+                  onPress={collapseSearch}
+                  style={{ paddingLeft: 12, paddingVertical: 8 }}
+                >
+                  <Text style={styles.cancelSearchText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
+
+          {/* 70% Height Search Dropdown Card */}
+          {isSearchExpanded && (
+            <Animated.View
+              style={[
+                styles.searchDropdownContainer,
+                { height: dropdownHeight },
+              ]}
+            >
+              <ScrollView
+                style={{ flex: 1 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {filteredFeatures.length > 0 ? (
+                  filteredFeatures.map((feature, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.searchResultItem}
+                      onPress={() => handleSearchNavigate(feature.route)}
+                    >
+                      <View style={styles.searchIconBox}>
+                        <Ionicons
+                          name={feature.icon as any}
+                          size={18}
+                          color={colors.primary}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.searchResultTitle}>
+                          {feature.title}
+                        </Text>
+                        <Text style={styles.searchResultCategory}>
+                          {feature.category}
+                        </Text>
+                      </View>
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={20}
+                        color="#D1D5DB"
+                      />
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptySearchContainer}>
+                    <MaterialIcons
+                      name="search-off"
+                      size={40}
+                      color="#D1D5DB"
+                    />
+                    <Text style={styles.emptySearchText}>
+                      No results found for "{headerSearchQuery}"
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </Animated.View>
+          )}
 
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -1434,7 +1868,9 @@ export default function DisasterRelief() {
 // STYLES
 // ============================================
 const styles = StyleSheet.create({
-  // Loading
+  // ============================================
+  // 1. LOADING & SIDEBAR
+  // ============================================
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1446,7 +1882,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.onSurfaceVariant,
   },
-  // Sidebar
   overlay: {
     position: "absolute",
     width: "100%",
@@ -1456,7 +1891,7 @@ const styles = StyleSheet.create({
   },
   sidebar: {
     position: "absolute",
-    width: width * 0.7,
+    width: width * 0.75,
     height: "100%",
     backgroundColor: "#fff",
     padding: 20,
@@ -1466,19 +1901,13 @@ const styles = StyleSheet.create({
   brandContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 30,
-    marginTop: 50,
+    marginBottom: 20,
+    marginTop: 0,
   },
-  brandIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+  brandLogo: {
+    width: 200,
+    height: 90,
   },
-  brandTitle: { fontSize: 16, fontWeight: "700", color: "#065f46" },
-  brandSub: { fontSize: 12, color: "#6b7280" },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -1496,7 +1925,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 5,
   },
-  menuItemLeft: { flexDirection: "row", alignItems: "center" },
+  menuItemLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
   menuText: { marginLeft: 12, fontSize: 14, color: "#374151" },
   menuItemActive: {
     flexDirection: "row",
@@ -1551,7 +1980,10 @@ const styles = StyleSheet.create({
   dropdownTextLogout: {
     color: "#ef4444",
   },
-  // Main
+
+  // ============================================
+  // 2. HEADER & EXPANDING SEARCH
+  // ============================================
   container: { flex: 1, backgroundColor: colors.surface },
   header: {
     backgroundColor: "rgba(255,255,255,0.95)",
@@ -1562,13 +1994,110 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    height: 64,
+    zIndex: 20,
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  menuButton: { padding: 8 },
+  menuButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: "600", color: "#111827" },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  iconButton: { padding: 8 },
+
+  searchIconTrigger: { padding: 4 },
+  iconButton: { padding: 4 },
   avatar: { width: 32, height: 32, borderRadius: 16 },
+
+  expandedSearchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  expandedSearchInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 20,
+    gap: 8,
+  },
+  expandedSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#111827",
+    paddingVertical: 0,
+    borderWidth: 0,
+    outlineStyle: "none",
+    outlineWidth: 0,
+  } as any,
+  cancelSearchText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  // ============================================
+  // 3. SEARCH DROPDOWN OVERLAY (70% HEIGHT)
+  // ============================================
+  searchDropdownContainer: {
+    position: "absolute",
+    top: 64,
+    left: 20,
+    right: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginTop: 8,
+    zIndex: 15,
+    elevation: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    overflow: "hidden",
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    gap: 14,
+  },
+  searchIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#F0FDF4",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchResultTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  searchResultCategory: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  emptySearchContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 60,
+    gap: 12,
+  },
+  emptySearchText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+  },
+
+  // ============================================
+  // 4. MAIN CONTENT
+  // ============================================
   scrollContent: { padding: 20, paddingBottom: 20 },
   backBtn: {
     flexDirection: "row",
@@ -1642,6 +2171,10 @@ const styles = StyleSheet.create({
   broadcastButtonText: {
     color: colors.onPrimary,
   },
+
+  // ============================================
+  // 5. CALAMITY CARDS
+  // ============================================
   floodCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 12,
@@ -1742,6 +2275,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
   },
+
+  // ============================================
+  // 6. TABS & TABLES
+  // ============================================
   tabContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -1844,6 +2381,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.onSurfaceVariant,
   },
+
+  // ============================================
+  // 7. LOGS
+  // ============================================
   logsCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 12,
@@ -1882,6 +2423,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.primary,
   },
+
+  // ============================================
+  // 8. MODALS
+  // ============================================
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -1962,98 +2507,42 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   submitButtonText: { color: "white", fontWeight: "600" },
+
+  // ============================================
+  // 9. FOOTER (synced with dashboard/admin)
+  // ============================================
   footer: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    marginTop: 20,
+    borderRadius: 16,
+    marginTop: 40,
     marginBottom: 0,
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: "#EDEEEF",
   },
-  footerContent: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    gap: 16,
-  },
-  footerSection: {
-    flex: 1,
-    minWidth: 150,
-  },
   footerLogoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 16,
   },
   footerLogoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
+    marginRight: 12,
   },
   footerFoundationName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#065f46",
   },
-  footerTagline: {
-    fontSize: 11,
-    color: "#6B7280",
-    lineHeight: 14,
-  },
-  footerSectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#191C1D",
-    marginBottom: 10,
-  },
-  footerContactItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    marginBottom: 8,
-  },
-  footerContactText: {
-    fontSize: 12,
-    color: "#6B7280",
-    flex: 1,
-  },
-  footerAddressText: {
-    fontSize: 12,
-    color: "#6B7280",
-    flex: 1,
-    lineHeight: 16,
-  },
+  footerTagline: { fontSize: 12, color: "#6B7280", lineHeight: 16 },
   footerBottom: {
     borderTopWidth: 1,
     borderTopColor: "#EDEEEF",
     paddingTop: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 10,
   },
-  footerCopyright: {
-    fontSize: 11,
-    color: "#6B7280",
-  },
-  footerLinks: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  footerLinkText: {
-    fontSize: 11,
-    color: "#006857",
-    fontWeight: "500",
-  },
-  footerDot: {
-    fontSize: 11,
-    color: "#9CA3AF",
-  },
+  footerCopyright: { fontSize: 12, color: "#6B7280" },
 });

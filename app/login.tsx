@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -50,7 +51,7 @@ export default function LoginPage() {
       const isHealthy = await checkAPIHealth();
       setApiStatus(isHealthy ? "online" : "offline");
       if (!isHealthy) {
-        console.warn("⚠️ API server might be offline");
+        console.warn("API server might be offline");
       }
     };
     checkHealth();
@@ -87,11 +88,8 @@ export default function LoginPage() {
   const handleLogin = async () => {
     if (!validate()) return;
 
-    // Check API status before attempting login
     if (apiStatus === "offline") {
-      setFormError("Server is not responding. Please try again later.");
-      toast.error("Server is not responding");
-      return;
+      console.warn("Remote API offline; continuing with local login flow");
     }
 
     setLoading(true);
@@ -185,7 +183,7 @@ export default function LoginPage() {
                   {apiStatus === "online"
                     ? "Server Online"
                     : apiStatus === "offline"
-                      ? "Server Offline"
+                      ? "Server Offline · Local login available"
                       : "Checking Server..."}
                 </Text>
               </View>
@@ -335,7 +333,7 @@ export default function LoginPage() {
                     loading ? styles.btnDisabled : null,
                   ]}
                   onPress={handleLogin}
-                  disabled={loading || apiStatus === "offline"}
+                  disabled={loading}
                   activeOpacity={0.8}
                 >
                   {loading ? (
@@ -359,8 +357,16 @@ export default function LoginPage() {
                 <TouchableOpacity
                   style={styles.btnSecondary}
                   onPress={() => {
-                    console.log(" Navigating to registration...");
-                    router.push("/(tabs)/registration");
+                    try {
+                      console.log("🔍 Navigating to /registration...");
+                      router.push("/registration");
+                    } catch (error) {
+                      Alert.alert(
+                        "Navigation Error",
+                        "Could not find the registration screen. Make sure registration.tsx is directly inside the 'app' folder.",
+                      );
+                      console.error(error);
+                    }
                   }}
                   disabled={loading}
                   activeOpacity={0.7}
@@ -526,33 +532,6 @@ const styles = StyleSheet.create({
   formSubtitle: {
     fontSize: 14,
     color: "#64748b",
-  },
-  debugContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#f1f5f9",
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  debugText: {
-    fontSize: 10,
-    color: "#64748b",
-    flex: 1,
-  },
-  testButton: {
-    backgroundColor: "#0d9488",
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  testButtonText: {
-    fontSize: 11,
-    color: "#ffffff",
-    fontWeight: "500",
   },
   errorContainer: {
     flexDirection: "row",

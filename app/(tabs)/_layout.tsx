@@ -7,11 +7,11 @@ import { ActivityIndicator, View } from "react-native";
 export default function TabLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const hasRedirected = useRef(false); // ✅ Prevent multiple redirects
+  const hasRedirected = useRef(false); //  Prevent multiple redirects
 
   // Protect all tabs - redirect to login if not authenticated
   useEffect(() => {
-    // ✅ Only redirect once
+    //  Only redirect once
     if (hasRedirected.current) return;
 
     if (!isLoading && !isAuthenticated) {
@@ -36,7 +36,7 @@ export default function TabLayout() {
     );
   }
 
-  // ✅ Return null if not authenticated (will redirect via useEffect)
+  // Return null if not authenticated (will redirect via useEffect)
   if (!isAuthenticated) {
     return null;
   }

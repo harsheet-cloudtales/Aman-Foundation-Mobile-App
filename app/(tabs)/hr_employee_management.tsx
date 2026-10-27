@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  Keyboard,
   Modal,
   RefreshControl,
   SafeAreaView,
@@ -24,7 +25,7 @@ import {
   View,
 } from "react-native";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 // ============================================
 // TYPES
@@ -95,71 +96,163 @@ const colors = {
 };
 
 // ============================================
-// FOOTER COMPONENT
+// ALL FEATURES (FOR SEARCH)
 // ============================================
-const Footer = () => {
-  return (
-    <View style={styles.footer}>
-      <View style={styles.footerContent}>
-        <View style={styles.footerSection}>
-          <View style={styles.footerLogoContainer}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryContainer]}
-              style={styles.footerLogoIcon}
-            >
-              <Ionicons name="business-outline" size={24} color="#fff" />
-            </LinearGradient>
-            <Text style={styles.footerFoundationName}>Aman Foundation</Text>
-          </View>
-          <Text style={styles.footerTagline}>
-            Creating lasting impact in communities
-          </Text>
-        </View>
+const ALL_FEATURES = [
+  {
+    title: "Management Hub",
+    route: "/education_management_hub",
+    icon: "library-outline",
+    category: "Education",
+  },
+  {
+    title: "Schools Overview",
+    route: "/education_schools_module",
+    icon: "business-outline",
+    category: "Education",
+  },
+  {
+    title: "Fellows Directory",
+    route: "/education_fellows_module",
+    icon: "people-outline",
+    category: "Education",
+  },
+  {
+    title: "Active Programs",
+    route: "/education_students_module",
+    icon: "calendar-outline",
+    category: "Education",
+  },
+  {
+    title: "PTA and Programs",
+    route: "/education_pta_programs",
+    icon: "document-text-outline",
+    category: "Education",
+  },
+  {
+    title: "After-School-Students",
+    route: "/after-school-students",
+    icon: "document-text-outline",
+    category: "Education",
+  },
+  {
+    title: "After-School-Centres",
+    route: "/after-school-centres",
+    icon: "document-text-outline",
+    category: "Education",
+  },
+  {
+    title: "PM Reflection",
+    route: "/PM Reflection",
+    icon: "stats-chart-outline",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Fellow Performance Tracking",
+    route: "/PerformanceTracking",
+    icon: "clipboard-outline",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Classroom Visits",
+    route: "/fellow-observation/classroom-visits",
+    icon: "assignment-turned-in",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Observation Reports",
+    route: "/fellow-observation/reports",
+    icon: "description",
+    category: "Fellow Observation",
+  },
+  {
+    title: "Livelihood Management Hub",
+    route: "/livelihood_management_hub",
+    icon: "apps-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Goat Rearing",
+    route: "/livelihood_goat_rearing_1",
+    icon: "paw-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Agriculture Support",
+    route: "/livelihood_sugarcane_cultivation",
+    icon: "leaf-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Beneficiaries",
+    route: "/beneficiaries",
+    icon: "people-circle-outline",
+    category: "Livelihood",
+  },
+  {
+    title: "Disaster Relief",
+    route: "/disaster_relief_management",
+    icon: "snow-outline",
+    category: "General",
+  },
+  {
+    title: "Travel Management",
+    route: "/travel",
+    icon: "airplane",
+    category: "General",
+  },
+  {
+    title: "HR Management",
+    route: "/hr_employee_management",
+    icon: "people-outline",
+    category: "HR",
+  },
+  {
+    title: "Admin & Access",
+    route: "/admin_access_control",
+    icon: "document-text-outline",
+    category: "Admin",
+  },
+  {
+    title: "Leaves",
+    route: "/(tabs)/leaves",
+    icon: "calendar-outline",
+    category: "HR",
+  },
+  {
+    title: "My Profile",
+    route: "/profile",
+    icon: "person-outline",
+    category: "Account",
+  },
+];
 
-        <View style={styles.footerSection}>
-          <Text style={styles.footerSectionTitle}>Contact Us</Text>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="call-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>+91 300 1234567</Text>
-          </View>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="mail-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>
-              info@amanfoundation.org
-            </Text>
-          </View>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="location-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerContactText}>Mumbai, India</Text>
-          </View>
-        </View>
-
-        <View style={styles.footerSection}>
-          <Text style={styles.footerSectionTitle}>Foundation Address</Text>
-          <View style={styles.footerContactItem}>
-            <Ionicons name="home-outline" size={16} color="#6B7280" />
-            <Text style={styles.footerAddressText}>
-              Mumbai{"\n"}
-              Sector F-11/3, Maha{"\n"}
-              India
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.footerBottom}>
-        <Text style={styles.footerCopyright}>
-          © 2026 Aman Foundation. All Rights Reserved.
+// ============================================
+// FOOTER COMPONENT  (from Dashboard)
+// ============================================
+const Footer = () => (
+  <View style={styles.footer}>
+    <View style={styles.footerLogoContainer}>
+      <LinearGradient
+        colors={[colors.primary, colors.primaryContainer]}
+        style={styles.footerLogoIcon}
+      >
+        <Ionicons name="business-outline" size={22} color="#fff" />
+      </LinearGradient>
+      <View>
+        <Text style={styles.footerFoundationName}>Aman Foundation</Text>
+        <Text style={styles.footerTagline}>
+          Creating lasting impact in communities
         </Text>
-        <View style={styles.footerLinks}>
-          <Text style={styles.footerLinkText}>Terms & Conditions</Text>
-          <Text style={styles.footerDot}>•</Text>
-          <Text style={styles.footerLinkText}>Privacy Policy</Text>
-        </View>
       </View>
     </View>
-  );
-};
+    <View style={styles.footerBottom}>
+      <Text style={styles.footerCopyright}>
+        © 2026 Aman Foundation. All Rights Reserved.
+      </Text>
+    </View>
+  </View>
+);
 
 // ============================================
 // MAIN COMPONENT
@@ -175,14 +268,22 @@ export default function HrEmployeeManagement() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState("Team Directory");
 
-  // Dropdown states
+  // Header Search Bar State
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [headerSearchQuery, setHeaderSearchQuery] = useState("");
+  const expandAnim = useRef(new Animated.Value(0)).current;
+  const dropdownAnim = useRef(new Animated.Value(0)).current;
+
+  // ============ SIDEBAR STATE ============
   const [educationDropdownOpen, setEducationDropdownOpen] = useState(false);
+  const [reportsDropdownOpen, setReportsDropdownOpen] = useState(false);
   const [livelihoodDropdownOpen, setLivelihoodDropdownOpen] = useState(false);
   const [authDropdownOpen, setAuthDropdownOpen] = useState(false);
 
   // Animated values
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const educationRotateAnim = useRef(new Animated.Value(0)).current;
+  const reportsRotateAnim = useRef(new Animated.Value(0)).current;
   const livelihoodRotateAnim = useRef(new Animated.Value(0)).current;
   const authRotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -206,13 +307,90 @@ export default function HrEmployeeManagement() {
   const [newStatus, setNewStatus] = useState("In Office");
 
   // ============================================
+  // HEADER SEARCH ANIMATION & DROPDOWN
+  // ============================================
+  const expandSearch = () => {
+    setIsSearchExpanded(true);
+    Animated.timing(expandAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+
+    if (headerSearchQuery.length > 0) {
+      Animated.timing(dropdownAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  const collapseSearch = () => {
+    Keyboard.dismiss();
+    Animated.timing(dropdownAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: false,
+    }).start(() => {
+      Animated.timing(expandAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start(() => {
+        setIsSearchExpanded(false);
+        setHeaderSearchQuery("");
+      });
+    });
+  };
+
+  const handleSearchTextChange = (text: string) => {
+    setHeaderSearchQuery(text);
+    if (text.length > 0) {
+      Animated.timing(dropdownAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      Animated.timing(dropdownAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  const searchBarWidth = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [40, width - 100],
+  });
+
+  const dropdownHeight = dropdownAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, height * 0.7],
+  });
+
+  const handleSearchNavigate = (route: string) => {
+    collapseSearch();
+    setTimeout(() => {
+      router.push(route as any);
+    }, 300);
+  };
+
+  const filteredFeatures = ALL_FEATURES.filter(
+    (f) =>
+      f.title.toLowerCase().includes(headerSearchQuery.toLowerCase()) ||
+      f.category.toLowerCase().includes(headerSearchQuery.toLowerCase()),
+  );
+
+  // ============================================
   // FETCH DATA
   // ============================================
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Fetch users (employees)
       const usersData = await api.get("/api/users");
       if (usersData && usersData.data) {
         const transformedEmployees: Employee[] = usersData.data.map(
@@ -232,7 +410,6 @@ export default function HrEmployeeManagement() {
         setEmployees(transformedEmployees);
       }
 
-      // Fetch attendance
       const attendanceData = await api.get("/api/attendance");
       if (attendanceData && attendanceData.data) {
         const transformedAttendance: AttendanceLog[] = attendanceData.data.map(
@@ -250,7 +427,6 @@ export default function HrEmployeeManagement() {
         setAttendanceLogs(transformedAttendance);
       }
 
-      // Fetch leaves
       const leavesData = await api.get("/api/leaves");
       if (leavesData && leavesData.data) {
         const transformedLeaves: LeaveRequest[] = leavesData.data.map(
@@ -397,6 +573,13 @@ export default function HrEmployeeManagement() {
     }
   };
 
+  const handleNavigation = (route: string) => {
+    closeMenu();
+    setTimeout(() => {
+      router.push(route as any);
+    }, 150);
+  };
+
   const toggleEducationDropdown = () => {
     const toValue = educationDropdownOpen ? 0 : 1;
     Animated.timing(educationRotateAnim, {
@@ -405,6 +588,16 @@ export default function HrEmployeeManagement() {
       useNativeDriver: true,
     }).start();
     setEducationDropdownOpen(!educationDropdownOpen);
+  };
+
+  const toggleReportsDropdown = () => {
+    const toValue = reportsDropdownOpen ? 0 : 1;
+    Animated.timing(reportsRotateAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    setReportsDropdownOpen(!reportsDropdownOpen);
   };
 
   const toggleLivelihoodDropdown = () => {
@@ -427,11 +620,6 @@ export default function HrEmployeeManagement() {
     setAuthDropdownOpen(!authDropdownOpen);
   };
 
-  const handleNavigation = (route: string) => {
-    closeMenu();
-    router.push(route);
-  };
-
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -452,6 +640,11 @@ export default function HrEmployeeManagement() {
   };
 
   const rotateEducation = educationRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const rotateReports = reportsRotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "180deg"],
   });
@@ -714,33 +907,34 @@ export default function HrEmployeeManagement() {
           />
         )}
 
-        {/* SIDEBAR */}
+        {/* ============================================
+            SIDEBAR — copied from Dashboard
+        ============================================ */}
         <Animated.View
           style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* BRAND */}
             <View style={styles.brandContainer}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryContainer]}
-                style={styles.brandIcon}
-              >
-                <MaterialIcons name="local-library" size={22} color="#fff" />
-              </LinearGradient>
-              <View>
-                <Text style={styles.brandTitle}>Aman Foundation</Text>
-                <Text style={styles.brandSub}>Impact Portal</Text>
-              </View>
+              <Image
+                source={require("../../assets/images/logo.jpeg")}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
             </View>
 
+            {/* DASHBOARD */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => handleNavigation("/")}
             >
-              <Ionicons name="grid-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Dashboard</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="grid-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Dashboard</Text>
+              </View>
             </TouchableOpacity>
 
-            {/* EDUCATION WITH DROPDOWN */}
+            {/* EDUCATION DROPDOWN */}
             <View>
               <TouchableOpacity
                 style={styles.menuItemWithDropdown}
@@ -772,6 +966,7 @@ export default function HrEmployeeManagement() {
                     />
                     <Text style={styles.dropdownText}>Management Hub</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -785,6 +980,7 @@ export default function HrEmployeeManagement() {
                     />
                     <Text style={styles.dropdownText}>Schools Overview</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -794,6 +990,7 @@ export default function HrEmployeeManagement() {
                     <Ionicons name="people-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Fellows Directory</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -805,24 +1002,129 @@ export default function HrEmployeeManagement() {
                       size={18}
                       color="#6b7280"
                     />
-                    <Text style={styles.dropdownText}>Students Directory</Text>
+                    <Text style={styles.dropdownText}>Active Programs</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() => handleNavigation("/education_pta_programs")}
                   >
                     <Ionicons
-                      name="people-circle-outline"
+                      name="document-text-outline"
                       size={18}
                       color="#6b7280"
                     />
-                    <Text style={styles.dropdownText}>PTA & Programs</Text>
+                    <Text style={styles.dropdownText}>PTA and Programs</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/after-school-students")}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>
+                      After-School-Students
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/after-school-centres")}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>
+                      After-School-Centres
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
             </View>
 
-            {/* LIVELIHOOD WITH DROPDOWN */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/(tabs)/task")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={20}
+                  color="#4b5563"
+                />
+                <Text style={styles.menuText}>Task</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/(tabs)/taskanalytics")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="bar-chart-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Task Analytics</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* FELLOW OBERVATION (top-level dropdown) */}
+            <View>
+              <TouchableOpacity
+                style={styles.menuItemWithDropdown}
+                onPress={toggleReportsDropdown}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons
+                    name="bar-chart-outline"
+                    size={20}
+                    color="#4b5563"
+                  />
+                  <Text style={styles.menuText}>Fellow Obervation</Text>
+                </View>
+                <Animated.View
+                  style={{ transform: [{ rotate: rotateReports }] }}
+                >
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Animated.View>
+              </TouchableOpacity>
+
+              {reportsDropdownOpen && (
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/PM Reflection")}
+                  >
+                    <Ionicons
+                      name="stats-chart-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>PM Reflection</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => handleNavigation("/PerformanceTracking")}
+                  >
+                    <Ionicons
+                      name="clipboard-outline"
+                      size={18}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.dropdownText}>
+                      Fellow Performance Tracking
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* LIVELIHOOD DROPDOWN */}
             <View>
               <TouchableOpacity
                 style={styles.menuItemWithDropdown}
@@ -850,6 +1152,7 @@ export default function HrEmployeeManagement() {
                     <Ionicons name="apps-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Management Hub</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -859,6 +1162,7 @@ export default function HrEmployeeManagement() {
                     <Ionicons name="paw-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Goat Rearing</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -868,6 +1172,7 @@ export default function HrEmployeeManagement() {
                     <Ionicons name="leaf-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Agriculture Support</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() =>
@@ -885,17 +1190,41 @@ export default function HrEmployeeManagement() {
               )}
             </View>
 
+            {/* FULL ACCESS ITEMS */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => handleNavigation("/disaster_relief_management")}
             >
-              <Ionicons name="snow-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>Disaster Relief</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="snow-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Disaster Relief</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/travel")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="airplane" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Travel Management</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/Reimbursement Management")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="cash" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Reimbursements Management</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* ACTIVE — HR Management */}
+            <TouchableOpacity
               style={[styles.menuItem, styles.menuItemActive]}
-              onPress={() => handleNavigation("/hr_employee_management")}
+              onPress={() => closeMenu()}
             >
               <Ionicons name="people-outline" size={20} color="#fff" />
               <Text style={styles.menuTextActive}>HR Management</Text>
@@ -905,15 +1234,27 @@ export default function HrEmployeeManagement() {
               style={styles.menuItem}
               onPress={() => handleNavigation("/admin_access_control")}
             >
-              <Ionicons
-                name="document-text-outline"
-                size={20}
-                color="#4b5563"
-              />
-              <Text style={styles.menuText}>Admin & Access</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={20}
+                  color="#4b5563"
+                />
+                <Text style={styles.menuText}>Admin & Access</Text>
+              </View>
             </TouchableOpacity>
 
-            {/* AUTHENTICATION SECTION */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigation("/(tabs)/leaves")}
+            >
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="calendar-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>Leaves</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* ACCOUNT SECTION */}
             <View style={styles.menuDivider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>ACCOUNT</Text>
@@ -922,13 +1263,12 @@ export default function HrEmployeeManagement() {
 
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => {
-                closeMenu();
-                router.push("/profile");
-              }}
+              onPress={() => handleNavigation("/profile")}
             >
-              <Ionicons name="person-outline" size={20} color="#4b5563" />
-              <Text style={styles.menuText}>My Profile</Text>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="person-outline" size={20} color="#4b5563" />
+                <Text style={styles.menuText}>My Profile</Text>
+              </View>
             </TouchableOpacity>
 
             <View>
@@ -949,20 +1289,15 @@ export default function HrEmployeeManagement() {
                 <View style={styles.dropdownContainer}>
                   <TouchableOpacity
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      closeMenu();
-                      router.push("/login");
-                    }}
+                    onPress={() => handleNavigation("/login")}
                   >
                     <Ionicons name="log-in-outline" size={18} color="#6b7280" />
                     <Text style={styles.dropdownText}>Login Page</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      closeMenu();
-                      router.push("/registration");
-                    }}
+                    onPress={() => handleNavigation("/registration")}
                   >
                     <Ionicons
                       name="person-add-outline"
@@ -971,6 +1306,7 @@ export default function HrEmployeeManagement() {
                     />
                     <Text style={styles.dropdownText}>Register Page</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[styles.dropdownItem, styles.dropdownItemLogout]}
                     onPress={handleLogout}
@@ -996,47 +1332,145 @@ export default function HrEmployeeManagement() {
         <SafeAreaView style={styles.container}>
           <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-          {/* Header */}
+          {/* HEADER */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-                <MaterialIcons name="menu" size={24} color="#4B5563" />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Impact Portal</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() =>
-                  Alert.alert("Notifications", "No new notifications")
-                }
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={22}
-                  color="#6B7280"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() =>
-                  Alert.alert("Settings", "Settings will be available soon")
-                }
-              >
-                <Ionicons name="settings-outline" size={22} color="#6B7280" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push("/profile")}>
-                <Image
-                  source={{
-                    uri:
-                      user?.avatar ||
-                      "https://randomuser.me/api/portraits/women/68.jpg",
-                  }}
-                  style={styles.avatar}
-                />
-              </TouchableOpacity>
-            </View>
+            {!isSearchExpanded ? (
+              <>
+                <View style={styles.headerLeft}>
+                  <TouchableOpacity
+                    onPress={toggleMenu}
+                    style={styles.menuButton}
+                  >
+                    <MaterialIcons name="menu" size={24} color="#4B5563" />
+                  </TouchableOpacity>
+                  <Text style={styles.headerTitle}>Impact Portal</Text>
+                </View>
+
+                <View style={styles.headerRight}>
+                  <TouchableOpacity
+                    style={styles.searchIconTrigger}
+                    onPress={expandSearch}
+                  >
+                    <MaterialIcons name="search" size={24} color="#6B7280" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() =>
+                      Alert.alert("Notifications", "No new notifications")
+                    }
+                  >
+                    <Ionicons
+                      name="notifications-outline"
+                      size={24}
+                      color="#6B7280"
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => router.push("/profile")}>
+                    <Image
+                      source={{
+                        uri:
+                          user?.avatar ||
+                          "https://randomuser.me/api/portraits/women/68.jpg",
+                      }}
+                      style={styles.avatar}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              // Expanded Search Bar
+              <View style={styles.expandedSearchContainer}>
+                <Animated.View
+                  style={[
+                    styles.expandedSearchInputWrapper,
+                    { width: searchBarWidth },
+                  ]}
+                >
+                  <MaterialIcons name="search" size={20} color="#6B7280" />
+                  <TextInput
+                    style={styles.expandedSearchInput}
+                    placeholder="Search pages, tabs & forms..."
+                    placeholderTextColor="#9CA3AF"
+                    value={headerSearchQuery}
+                    onChangeText={handleSearchTextChange}
+                    autoFocus
+                    returnKeyType="search"
+                    underlineColorAndroid="transparent"
+                  />
+                  {headerSearchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => handleSearchTextChange("")}
+                    >
+                      <MaterialIcons name="close" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+                <TouchableOpacity
+                  onPress={collapseSearch}
+                  style={{ paddingLeft: 12, paddingVertical: 8 }}
+                >
+                  <Text style={styles.cancelSearchText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
+
+          {/* 70% Height Search Dropdown Card */}
+          {isSearchExpanded && (
+            <Animated.View
+              style={[
+                styles.searchDropdownContainer,
+                { height: dropdownHeight },
+              ]}
+            >
+              <ScrollView
+                style={{ flex: 1 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {filteredFeatures.length > 0 ? (
+                  filteredFeatures.map((feature, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.searchResultItem}
+                      onPress={() => handleSearchNavigate(feature.route)}
+                    >
+                      <View style={styles.searchIconBox}>
+                        <Ionicons
+                          name={feature.icon as any}
+                          size={18}
+                          color={colors.primary}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.searchResultTitle}>
+                          {feature.title}
+                        </Text>
+                        <Text style={styles.searchResultCategory}>
+                          {feature.category}
+                        </Text>
+                      </View>
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={20}
+                        color="#D1D5DB"
+                      />
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptySearchContainer}>
+                    <MaterialIcons
+                      name="search-off"
+                      size={40}
+                      color="#D1D5DB"
+                    />
+                    <Text style={styles.emptySearchText}>
+                      No results found for "{headerSearchQuery}"
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </Animated.View>
+          )}
 
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -1517,7 +1951,7 @@ export default function HrEmployeeManagement() {
               )}
             </View>
 
-            {/* Footer */}
+            {/* Footer — from Dashboard */}
             <Footer />
           </ScrollView>
         </SafeAreaView>
@@ -1632,7 +2066,9 @@ export default function HrEmployeeManagement() {
 // STYLES
 // ============================================
 const styles = StyleSheet.create({
-  // Loading
+  // ============================================
+  // 1. LOADING & SIDEBAR
+  // ============================================
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1644,7 +2080,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.onSurfaceVariant,
   },
-  // ==================== SIDEBAR STYLES ====================
   overlay: {
     position: "absolute",
     width: "100%",
@@ -1654,7 +2089,7 @@ const styles = StyleSheet.create({
   },
   sidebar: {
     position: "absolute",
-    width: width * 0.7,
+    width: width * 0.75,
     height: "100%",
     backgroundColor: "#fff",
     padding: 20,
@@ -1664,29 +2099,17 @@ const styles = StyleSheet.create({
   brandContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 30,
-    marginTop: 50,
+    marginBottom: 20,
+    marginTop: 0,
   },
-  brandIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  brandTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#065f46",
-  },
-  brandSub: {
-    fontSize: 12,
-    color: "#6b7280",
+  brandLogo: {
+    width: 200,
+    height: 90,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderRadius: 12,
@@ -1704,6 +2127,7 @@ const styles = StyleSheet.create({
   menuItemLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   menuText: {
     marginLeft: 12,
@@ -1737,6 +2161,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 8,
+    borderRadius: 8,
   },
   dropdownText: {
     fontSize: 13,
@@ -1772,13 +2197,13 @@ const styles = StyleSheet.create({
     color: "#ef4444",
   },
 
-  // ==================== MAIN CONTAINER ====================
+  // ============================================
+  // 2. HEADER & EXPANDING SEARCH
+  // ============================================
   container: {
     flex: 1,
     backgroundColor: colors.surface,
   },
-
-  // ==================== HEADER STYLES ====================
   header: {
     backgroundColor: "rgba(255,255,255,0.95)",
     borderBottomWidth: 1,
@@ -1788,6 +2213,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    height: 64,
+    zIndex: 20,
   },
   headerLeft: {
     flexDirection: "row",
@@ -1795,7 +2222,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuButton: {
-    padding: 8,
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -1807,8 +2234,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  searchIconTrigger: { padding: 4 },
   iconButton: {
-    padding: 8,
+    padding: 4,
   },
   avatar: {
     width: 32,
@@ -1816,13 +2244,102 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
-  // ==================== SCROLL CONTENT ====================
+  expandedSearchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  expandedSearchInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 20,
+    gap: 8,
+  },
+  expandedSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#111827",
+    paddingVertical: 0,
+    borderWidth: 0,
+    outlineStyle: "none",
+    outlineWidth: 0,
+  } as any,
+  cancelSearchText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  // ============================================
+  // 3. SEARCH DROPDOWN OVERLAY (70% HEIGHT)
+  // ============================================
+  searchDropdownContainer: {
+    position: "absolute",
+    top: 64,
+    left: 20,
+    right: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginTop: 8,
+    zIndex: 15,
+    elevation: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    overflow: "hidden",
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    gap: 14,
+  },
+  searchIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#F0FDF4",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchResultTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  searchResultCategory: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  emptySearchContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 60,
+    gap: 12,
+  },
+  emptySearchText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+  },
+
+  // ============================================
+  // 4. MAIN CONTENT
+  // ============================================
   scrollContent: {
     padding: 20,
     paddingBottom: 20,
   },
-
-  // ==================== BACK BUTTON ====================
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1835,8 +2352,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: "#64748b",
   },
-
-  // ==================== HEADER SECTION ====================
   sectionLabel: {
     fontSize: 10,
     fontWeight: "600",
@@ -1858,7 +2373,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // ==================== ADD BUTTON ====================
+  // ============================================
+  // 5. ACTION BUTTONS & TABS
+  // ============================================
   addButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1874,8 +2391,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.onPrimary,
   },
-
-  // ==================== TABS ====================
   tabContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1901,8 +2416,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: "600",
   },
-
-  // ==================== TAB CONTENT ====================
   tabContent: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 16,
@@ -1915,7 +2428,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  // ==================== DIRECTORY HEADER ====================
+  // ============================================
+  // 6. DIRECTORY HEADER & FILTERS
+  // ============================================
   directoryHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1937,13 +2452,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
-
-  // ==================== TABLE CONTAINER ====================
-  tableContainer: {
-    minWidth: 800,
-  },
-
-  // ==================== FILTERS ====================
   filterContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -2000,7 +2508,12 @@ const styles = StyleSheet.create({
     color: colors.emerald,
   },
 
-  // ==================== TABLE HEADERS ====================
+  // ============================================
+  // 7. TABLE
+  // ============================================
+  tableContainer: {
+    minWidth: 800,
+  },
   tableHeader: {
     flexDirection: "row",
     paddingBottom: 10,
@@ -2014,24 +2527,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: colors.onSurfaceVariant,
   },
-
-  // Team Directory Headers
   headerId: { width: 80 },
   headerName: { width: 120 },
   headerEmail: { width: 180 },
   headerDept: { width: 100 },
   headerRole: { width: 140 },
   headerStatusTbl: { width: 100, textAlign: "right" },
-
-  // Attendance Headers
   attEmail: { width: 180 },
   attStatus: { width: 140 },
   attHours: { width: 100 },
   attLogin: { width: 100 },
   attTasks: { width: 120 },
   attActions: { width: 100, textAlign: "right" },
-
-  // Leave Headers
   leaveCoach: { width: 120 },
   leaveType: { width: 100 },
   leaveDates: { width: 180 },
@@ -2039,13 +2546,9 @@ const styles = StyleSheet.create({
   leaveRemaining: { width: 90, textAlign: "center" },
   leaveStatusHdr: { width: 100, textAlign: "center" },
   leaveActionsHdr: { width: 160, textAlign: "right" },
-
-  // SOP Headers
   sopName: { flex: 1.5 },
   sopRole: { flex: 1.5 },
   sopStatus: { flex: 1, textAlign: "right" },
-
-  // ==================== TABLE ROWS ====================
   tableRow: {
     flexDirection: "row",
     paddingVertical: 12,
@@ -2057,38 +2560,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurface,
   },
-
-  // Team Directory Row Cells
   rowId: { width: 80 },
   rowName: { width: 120, fontWeight: "500" },
   rowEmail: { width: 180 },
   rowDept: { width: 100 },
   rowRole: { width: 140 },
   rowStatusTbl: { width: 100, alignItems: "flex-end" },
-
-  // Status Badges
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  statusActiveMission: {
-    backgroundColor: colors.primaryFixed,
-  },
-  statusInOffice: {
-    backgroundColor: colors.surfaceContainerHighest,
-  },
-  statusOnLeave: {
-    backgroundColor: colors.errorContainer,
-  },
+  statusActiveMission: { backgroundColor: colors.primaryFixed },
+  statusInOffice: { backgroundColor: colors.surfaceContainerHighest },
+  statusOnLeave: { backgroundColor: colors.errorContainer },
   statusBadgeText: {
     fontSize: 9,
     fontWeight: "600",
     textTransform: "uppercase",
     color: colors.onPrimaryFixed,
   },
-
-  // Attendance Row Cells
   attEmailCell: {
     width: 180,
     flexDirection: "row",
@@ -2105,8 +2596,6 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "flex-end",
   },
-
-  // Employee Avatar
   employeeAvatar: {
     width: 28,
     height: 28,
@@ -2115,18 +2604,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: colors.blue,
-  },
-  employeeEmail: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.onSurface,
-  },
-
-  // Status Pill
+  avatarText: { fontSize: 12, fontWeight: "bold", color: colors.blue },
+  employeeEmail: { fontSize: 12, fontWeight: "500", color: colors.onSurface },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -2136,42 +2615,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignSelf: "flex-start",
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusPillText: {
-    fontSize: 10,
-    fontWeight: "500",
-  },
-
-  // Tasks Container
-  tasksContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  tasksText: {
-    fontSize: 11,
-    color: colors.blue,
-  },
-  tasksTextNo: {
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-  },
-
-  // Action Buttons
-  actionText: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: colors.blue,
-  },
-  deleteText: {
-    color: colors.rose,
-  },
-
-  // Leave Row Cells
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusPillText: { fontSize: 10, fontWeight: "500" },
+  tasksContainer: { flexDirection: "row", alignItems: "center", gap: 4 },
+  tasksText: { fontSize: 11, color: colors.blue },
+  tasksTextNo: { fontSize: 11, color: colors.onSurfaceVariant },
+  actionText: { fontSize: 11, fontWeight: "500", color: colors.blue },
+  deleteText: { color: colors.rose },
   leaveCoachCell: { width: 120, fontWeight: "500" },
   leaveTypeCell: { width: 100 },
   leaveDatesCell: { width: 180 },
@@ -2179,8 +2629,6 @@ const styles = StyleSheet.create({
   leaveRemainingCell: { width: 90, textAlign: "center" },
   leaveStatusCell: { width: 100, alignItems: "center" },
   leaveActionsCell: { width: 160, alignItems: "flex-end" },
-
-  // Leave Status Badges
   leaveStatusApproved: {
     backgroundColor: `${colors.emerald}15`,
     paddingHorizontal: 8,
@@ -2211,12 +2659,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: colors.onSurface,
   },
-
-  // Action Buttons Row
-  actionButtonsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  actionButtonsRow: { flexDirection: "row", gap: 8 },
   approveButton: {
     backgroundColor: colors.emerald,
     paddingHorizontal: 12,
@@ -2241,44 +2684,21 @@ const styles = StyleSheet.create({
     color: "white",
     textTransform: "uppercase",
   },
-  resetText: {
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-  },
-
-  // SOP Row Cells
+  resetText: { fontSize: 11, color: colors.onSurfaceVariant },
   sopNameCell: { flex: 1.5, fontWeight: "500" },
   sopRoleCell: { flex: 1.5 },
   sopStatusCell: { flex: 1, alignItems: "flex-end" },
+  sopBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  sopSigned: { backgroundColor: colors.primaryFixed },
+  sopPending: { backgroundColor: colors.errorContainer },
+  sopBadgeText: { fontSize: 9, fontWeight: "600", textTransform: "uppercase" },
+  sopSignedText: { color: colors.onPrimaryFixed },
+  sopPendingText: { color: colors.onErrorContainer },
 
-  // SOP Badges
-  sopBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  sopSigned: {
-    backgroundColor: colors.primaryFixed,
-  },
-  sopPending: {
-    backgroundColor: colors.errorContainer,
-  },
-  sopBadgeText: {
-    fontSize: 9,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  sopSignedText: {
-    color: colors.onPrimaryFixed,
-  },
-  sopPendingText: {
-    color: colors.onErrorContainer,
-  },
-
-  // ==================== REPORTS SECTION ====================
-  reportContainer: {
-    marginBottom: 20,
-  },
+  // ============================================
+  // 8. REPORTS SECTION
+  // ============================================
+  reportContainer: { marginBottom: 20 },
   reportSubtitle: {
     fontSize: 14,
     fontWeight: "600",
@@ -2316,8 +2736,6 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     textAlign: "right",
   },
-
-  // Side Info Card
   sideInfoCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -2337,17 +2755,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.outlineVariant,
   },
-  balanceLabel: {
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-  },
-  balanceValue: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.onSurface,
-  },
+  balanceLabel: { fontSize: 12, color: colors.onSurfaceVariant },
+  balanceValue: { fontSize: 12, fontWeight: "600", color: colors.onSurface },
 
-  // ==================== MODAL STYLES ====================
+  // ============================================
+  // 9. MODALS
+  // ============================================
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -2367,17 +2780,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.onSurface,
-  },
-  modalForm: {
-    padding: 20,
-    gap: 16,
-  },
-
-  // ==================== FORM STYLES ====================
+  modalTitle: { fontSize: 18, fontWeight: "bold", color: colors.onSurface },
+  modalForm: { padding: 20, gap: 16 },
   formLabel: {
     fontSize: 11,
     fontWeight: "600",
@@ -2402,9 +2806,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
   },
-  picker: {
-    height: 44,
-  },
+  picker: { height: 44 },
   formButtons: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -2418,21 +2820,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#d1d5db",
   },
-  cancelButtonText: {
-    color: colors.onSurface,
-  },
+  cancelButtonText: { color: colors.onSurface },
   submitButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: colors.primary,
   },
-  submitButtonText: {
-    color: "white",
-    fontWeight: "600",
-  },
+  submitButtonText: { color: "white", fontWeight: "600" },
 
-  // ==================== TOAST NOTIFICATION ====================
+  // ============================================
+  // 10. TOAST & FOOTER  (footer from Dashboard)
+  // ============================================
   toast: {
     position: "absolute",
     bottom: 80,
@@ -2452,42 +2851,23 @@ const styles = StyleSheet.create({
     elevation: 5,
     zIndex: 200,
   },
-  toastText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "white",
-  },
+  toastText: { fontSize: 12, fontWeight: "500", color: "white" },
 
-  // ==================== FOOTER STYLES ====================
+  // ============================================
+  // FOOTER  (from Dashboard)
+  // ============================================
   footer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    marginTop: 20,
-    marginBottom: 0,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 40,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: "#EDEEEF",
-  },
-  footerContent: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 24,
-    gap: 20,
-  },
-  footerSection: {
-    flex: 1,
-    minWidth: 200,
   },
   footerLogoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   footerLogoIcon: {
     width: 40,
@@ -2498,64 +2878,15 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   footerFoundationName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#065f46",
   },
-  footerTagline: {
-    fontSize: 12,
-    color: "#6B7280",
-    lineHeight: 16,
-  },
-  footerSectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#191C1D",
-    marginBottom: 12,
-  },
-  footerContactItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 10,
-  },
-  footerContactText: {
-    fontSize: 13,
-    color: "#6B7280",
-    flex: 1,
-  },
-  footerAddressText: {
-    fontSize: 13,
-    color: "#6B7280",
-    flex: 1,
-    lineHeight: 18,
-  },
+  footerTagline: { fontSize: 12, color: "#6B7280", lineHeight: 16 },
   footerBottom: {
     borderTopWidth: 1,
     borderTopColor: "#EDEEEF",
-    paddingTop: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 12,
+    paddingTop: 16,
   },
-  footerCopyright: {
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  footerLinks: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  footerLinkText: {
-    fontSize: 12,
-    color: "#006857",
-    fontWeight: "500",
-  },
-  footerDot: {
-    fontSize: 12,
-    color: "#9CA3AF",
-  },
+  footerCopyright: { fontSize: 12, color: "#6B7280" },
 });
